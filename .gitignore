@@ -1,11 +1,35 @@
-.terraform/
-.terraform.lock.hcl
+# -------------------------------------------------------------------------
+# IGNORE DE TERRAFORM
+# -------------------------------------------------------------------------
+
+# Directorio local de Terraform (Evita el error de los archivos gigantes)
+**/.terraform/
+
+# Archivos de estado de Terraform (Por seguridad, aunque uses backend.tf)
 *.tfstate
 *.tfstate.*
-*.tfplan
+
+# Logs de errores en caso de que Terraform falle
 crash.log
-terraform.exe
+crash.*.log
+
+# Archivos con variables (Suelen contener contraseñas, tokens y datos sensibles)
 *.tfvars
-!*.tfvars.example
-*.json
-application_default_credentials.json
+*.tfvars.json
+
+# Archivos de anulación locales
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# -------------------------------------------------------------------------
+# IGNORE DEL SISTEMA / OTROS
+# -------------------------------------------------------------------------
+
+# Ejecutables (Ignora tu archivo terraform/terraform.exe)
+*.exe
+
+# Archivos de sistema operativo (Windows/Mac)
+.DS_Store
+Thumbs.db
