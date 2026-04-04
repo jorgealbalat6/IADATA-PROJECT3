@@ -1,44 +1,41 @@
-# modules/bigquery/variables.tf
-
 variable "project_id" {
-  type        = string
-  description = "El ID del proyecto de GCP."
-}
-
-variable "dataset_id" {
-  type        = string
-  description = "El ID único para el Dataset de BigQuery (sin espacios)."
-}
-
-variable "friendly_name" {
-  type        = string
-  description = "Nombre amigable para el Dataset."
-  default     = null
-}
-
-variable "description" {
-  type        = string
-  description = "Descripción del propósito del Dataset."
-  default     = "Dataset gestionado por Terraform"
+  type = string
 }
 
 variable "location" {
-  type        = string
-  description = "Ubicación geográfica de los datos (ej. 'EU', 'US')."
-  default     = "europe-west1"
+  type    = string
+  default = "europe-west1"
 }
 
-variable "labels" {
-  type        = map(string)
-  description = "Etiquetas clave-valor."
-  default     = {}
+variable "datasets" {
+  type = list(object({
+    dataset_id    = string
+    friendly_name = optional(string, "")
+    description   = optional(string, "")
+  }))
+  default = []
 }
 
 variable "tables" {
-  type = map(object({
-    description = string
-    schema      = string
+  type = list(object({
+    dataset_id = string
+    table_id   = string
+    schema     = string
   }))
-  description = "Mapa de tablas a crear. La clave es el nombre de la tabla."
-  default     = {}
+  default = []
+}
+
+variable "delete_contents_on_destroy" {
+  type    = bool
+  default = false
+}
+
+variable "labels" {
+  type    = map(string)
+  default = {}
+}
+
+variable "api_services_dependency" {
+  type    = any
+  default = null
 }

@@ -1,0 +1,11 @@
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+terraform.exe
+*.tfvars
+!*.tfvars.example
+*.json
+application_default_credentials.json
