@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "bucket-jorge-albalat-dp3"
+    bucket = "tfstate-grupo1"
     prefix = "terraform/state"
   }
 }

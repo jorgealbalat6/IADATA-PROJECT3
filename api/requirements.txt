@@ -1,0 +1,4 @@
+fastapi
+uvicorn[standard]
+google-cloud-firestore
+pydantic[email]>=2.7.0

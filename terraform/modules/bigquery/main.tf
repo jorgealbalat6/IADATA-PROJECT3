@@ -23,5 +23,15 @@ resource "google_bigquery_table" "tables" {
 
   deletion_protection = false
 
+  dynamic "time_partitioning" {
+    for_each = each.value.partition_field != null ? [1] : []
+    content {
+      type  = each.value.partition_type != null ? each.value.partition_type : "DAY"
+      field = each.value.partition_field
+    }
+  }
+
+  clustering = each.value.clustering
+
   depends_on = [google_bigquery_dataset.this]
 }
