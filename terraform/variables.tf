@@ -16,3 +16,8 @@ variable "repository_name" {
   type    = string
   default = "app-repo"
 }
+
+variable "predicthq_token" {
+  type        = string
+  sensitive   = true
+}

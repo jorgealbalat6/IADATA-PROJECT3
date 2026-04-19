@@ -147,6 +147,45 @@ module "bigquery" {
         { name = "fixed", type = "BOOLEAN", mode = "NULLABLE" },
         { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" }
       ])
+    },
+    {
+      dataset_id = "airbnb_features"
+      table_id = "weather"
+      partition_field = "date"
+      schema = jsonencode([
+        { name = "date", type = "DATE", mode = "REQUIRED" },
+        { name = "temp_max", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "temp_min", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "temp_mean", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "precipitation_mm", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "rain_mm", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "wind_max_kmh", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "weather_code", type = "INT64", mode = "NULLABLE" },
+        { name = "source", type = "STRING", mode = "REQUIRED" },
+        { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" }
+      ])
+    },
+    {
+      dataset_id = "airbnb_features"
+      table_id = "events"
+      partition_field = "start_date"
+      clustering = ["category"]
+      schema = jsonencode([
+        { name = "event_id", type = "STRING", mode = "REQUIRED" },
+        { name = "title", type = "STRING", mode = "NULLABLE" },
+        { name = "category", type = "STRING", mode = "NULLABLE" },
+        { name = "start_date", type = "DATE", mode = "REQUIRED" },
+        { name = "end_date", type = "DATE", mode = "NULLABLE" },
+        { name = "duration_days", type = "INT64", mode = "NULLABLE" },
+        { name = "latitude", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "longitude", type = "FLOAT64", mode = "NULLABLE" },
+        { name = "rank", type = "INT64", mode = "NULLABLE" },
+        { name = "local_rank", type = "INT64", mode = "NULLABLE" },
+        { name = "phq_attendance", type = "INT64", mode = "NULLABLE" },
+        { name = "labels", type = "STRING", mode = "NULLABLE" },
+        { name = "description", type = "STRING", mode = "NULLABLE" },
+        { name = "ingested_at", type = "TIMESTAMP", mode = "NULLABLE" }
+      ])
     }
   ]
 
@@ -185,11 +224,6 @@ module "ingesta_airbnb" {
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-airbnb:latest"
 
   container_port = 8080
-  cpu            = "2"
-  memory         = "4Gi"
-  min_instances  = 0
-  max_instances  = 1
-
   env_vars = {
     GCP_PROJECT = var.project_id
   }
@@ -225,8 +259,6 @@ module "ingesta_holidays"{
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-holidays:latest"
  
   container_port = 8080
-  min_instances  = 0
-  max_instances  = 1
  
   env_vars = {
     GCP_PROJECT = var.project_id
@@ -249,6 +281,80 @@ resource "google_service_account" "ingesta_holidays" {
   account_id   = "sa-ingesta-holidays"
   display_name = "Ingesta Holidays Cloud Run"
   description  = "Service account para el servicio de ingesta de festivos"
+ 
+  depends_on = [module.api_services.enabled_apis]
+}
+
+module "ingesta_tiempo"{
+  source = "./modules/cloud-run"
+
+  service_name = "tiempo"
+  region = var.region
+  project_id = var.project_id
+  service_account_email = google_service_account.ingesta_tiempo.email
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-tiempo:latest"
+ 
+  container_port = 8080
+ 
+  env_vars = {
+    GCP_PROJECT = var.project_id
+  }
+ 
+  invokers = [
+    "serviceAccount:sa-ingesta-tiempo@${var.project_id}.iam.gserviceaccount.com"
+  ]
+ 
+  extra_roles = [
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
+  ]
+ 
+  api_services_dependency = module.api_services.enabled_apis
+}
+ 
+resource "google_service_account" "ingesta_tiempo" {
+  project      = var.project_id
+  account_id   = "sa-ingesta-tiempo"
+  display_name = "Ingesta Tiempo Cloud Run"
+  description  = "Service account para el servicio de ingesta del tiempo"
+ 
+  depends_on = [module.api_services.enabled_apis]
+}
+
+module "ingesta_events" {
+  source = "./modules/cloud-run"
+ 
+  service_name          = "ingesta-events"
+  region                = var.region
+  project_id            = var.project_id
+  service_account_email = google_service_account.ingesta_events.email
+ 
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-events:latest"
+ 
+  container_port = 8080
+ 
+  env_vars = {
+    GCP_PROJECT     = var.project_id
+    PREDICTHQ_TOKEN = var.predicthq_token
+  }
+ 
+  invokers = [
+    "serviceAccount:sa-ingesta-events@${var.project_id}.iam.gserviceaccount.com"
+  ]
+ 
+  extra_roles = [
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
+  ]
+ 
+  api_services_dependency = module.api_services.enabled_apis
+}
+ 
+resource "google_service_account" "ingesta_events" {
+  project      = var.project_id
+  account_id   = "sa-ingesta-events"
+  display_name = "Ingesta Events Cloud Run"
+  description  = "Service account para el servicio de ingesta de eventos"
  
   depends_on = [module.api_services.enabled_apis]
 }

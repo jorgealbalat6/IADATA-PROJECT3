@@ -101,7 +101,9 @@ def ingest_holidays(request):
         ?year=2025,2026      -> ingesta varios años
         ?force=true          -> re-ingesta aunque ya existan
     """
-    year_param = request.args.get("year", str(datetime.now().year))
+    current_year = datetime.now().year
+    default_years = f"2025,{current_year},{current_year + 1}"
+    year_param = request.args.get("year", default_years)
     years = [int(y.strip()) for y in year_param.split(",")]
     force = request.args.get("force", "false").lower() == "true"
 
