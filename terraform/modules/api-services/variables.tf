@@ -21,6 +21,7 @@ variable "apis" {
     # Logs y métricas
     "logging.googleapis.com",
     "monitoring.googleapis.com",
+    "cloudscheduler.googleapis.com"
   ]
 }
 variable "project_id" {

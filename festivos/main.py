@@ -1,3 +1,17 @@
+"""
+Cloud Function: Ingesta de festivos de España (Nager.Date API) -> BigQuery
+
+Ingesta TODOS los festivos de España (nacionales + regionales).
+Un festivo en Madrid, Cataluña, etc. puede generar turismo en Valencia.
+
+Trigger: Cloud Scheduler via HTTP o invocacion manual.
+
+Endpoints:
+    GET/POST /                -> ingesta año actual
+    GET/POST /?year=2025      -> ingesta año especifico
+    GET/POST /?year=2025,2026 -> ingesta varios años
+"""
+
 import logging
 import os
 from datetime import datetime
@@ -7,6 +21,9 @@ import pandas as pd
 import requests
 from google.cloud import bigquery
 
+# ──────────────────────────────────────────────
+# CONFIGURACION
+# ──────────────────────────────────────────────
 PROJECT_ID = os.environ.get("GCP_PROJECT")
 DATASET = "airbnb_features"
 TABLE = "holidays"
@@ -14,12 +31,18 @@ TABLE_REF = f"{PROJECT_ID}.{DATASET}.{TABLE}"
 
 API_BASE = "https://date.nager.at/api/v3/PublicHolidays"
 COUNTRY = "ES"
-VALENCIA_REGION = "ES-VC"
+VALENCIA_REGION = "ES-VC"  # Para marcar cuales aplican a Valencia
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# ──────────────────────────────────────────────
+# FUNCIONES
+# ──────────────────────────────────────────────
+
 def fetch_holidays(year: int) -> list[dict]:
+    """Llama a Nager.Date API y devuelve los festivos del año."""
     url = f"{API_BASE}/{year}/{COUNTRY}"
     logger.info(f"Fetching holidays: {url}")
 
@@ -29,6 +52,8 @@ def fetch_holidays(year: int) -> list[dict]:
     holidays = response.json()
     logger.info(f"API devolvio {len(holidays)} festivos para {year}")
     return holidays
+
+
 def transform_holidays(holidays: list[dict]) -> pd.DataFrame:
     """
     Transforma todos los festivos de España.
@@ -58,6 +83,7 @@ def transform_holidays(holidays: list[dict]) -> pd.DataFrame:
 
     logger.info(f"Festivos España: {len(df)} total | Aplican a Valencia: {df['applies_to_valencia'].sum()}")
     return df
+
 
 def check_already_ingested(year: int) -> bool:
     """Comprueba si ya se ingesto este año."""
@@ -91,6 +117,11 @@ def load_to_bigquery(df: pd.DataFrame):
     job.result()
     logger.info(f"Cargado OK: {job.output_rows} filas en {TABLE_REF}")
 
+
+# ──────────────────────────────────────────────
+# ENTRY POINT
+# ──────────────────────────────────────────────
+
 @functions_framework.http
 def ingest_holidays(request):
     """
@@ -101,9 +132,8 @@ def ingest_holidays(request):
         ?year=2025,2026      -> ingesta varios años
         ?force=true          -> re-ingesta aunque ya existan
     """
-    current_year = datetime.now().year
-    default_years = f"2025,{current_year},{current_year + 1}"
-    year_param = request.args.get("year", default_years)
+    # Parsear años del query param (default: año siguiente)
+    year_param = request.args.get("year", str(datetime.now().year + 1))
     years = [int(y.strip()) for y in year_param.split(",")]
     force = request.args.get("force", "false").lower() == "true"
 
@@ -120,6 +150,7 @@ def ingest_holidays(request):
                 all_results.append({"year": year, "status": msg})
                 continue
 
+            # Fetch y transformar
             holidays = fetch_holidays(year)
             df = transform_holidays(holidays)
 
@@ -129,6 +160,7 @@ def ingest_holidays(request):
                 all_results.append({"year": year, "status": msg})
                 continue
 
+            # Cargar a BigQuery
             load_to_bigquery(df)
             all_results.append({
                 "year": year,

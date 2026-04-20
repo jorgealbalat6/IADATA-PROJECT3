@@ -358,3 +358,42 @@ resource "google_service_account" "ingesta_events" {
  
   depends_on = [module.api_services.enabled_apis]
 }
+
+module "schedulers" {
+  source = "./modules/scheduler"
+  project_id = var.project_id
+  region = var.region
+ 
+  jobs = [
+    {
+      name = "scheduler-weather-daily"
+      description = "Ingesta diaria de prevision meteorologica (14 dias)"
+      schedule = "0 2 * * *" # Todos los dias 2:00 AM
+      uri = "${module.ingesta_tiempo.service_url}?mode=forecast"
+      service_account_email = google_service_account.ingesta_tiempo.email
+    },
+    {
+      name = "scheduler-weather-historical"
+      description = "Ingesta mensual de datos meteorologicos reales del mes anterior"
+      schedule = "0 2 1 * *" # Dia 1 cada mes 2:00 AM
+      uri = "${module.ingesta_tiempo.service_url}?mode=historical"
+      service_account_email = google_service_account.ingesta_tiempo.email
+    },
+    {
+      name = "scheduler-events-weekly"
+      description = "Ingesta semanal de eventos (proximos 30 dias)"
+      schedule = "0 2 * * *" # Lunes 2:00 AM
+      uri = "${module.ingesta_events.service_url}?mode=upcoming"
+      service_account_email = google_service_account.ingesta_events.email
+    },
+    {
+      name = "scheduler-holidays-yearly"
+      description = "Ingesta anual de festivos del ano nuevo"
+      schedule = "0 2 1 1 *" # 1 enero 2:00 AM
+      uri = "${module.ingesta_holidays.service_url}?force=true"
+      service_account_email = google_service_account.ingesta_holidays.email
+    },
+  ]
+ 
+  api_services_dependency = module.api_services.enabled_apis
+}
