@@ -204,13 +204,33 @@ def ingest_weather(request):
 
     try:
         if mode == "historical":
-            start_date = request.args.get("start_date", "2025-06-01")
             end_date = request.args.get("end_date", (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d"))
+
+            # Buscar la fecha más antigua de forecast en BigQuery
+            start_date = request.args.get("start_date")
+            if not start_date:
+                client = bigquery.Client(project=PROJECT_ID)
+                query = f"""
+                    SELECT MIN(date) as min_date
+                    FROM `{TABLE_REF}`
+                    WHERE source = 'forecast'
+                    AND date <= '{end_date}'
+                """
+                try:
+                    result = client.query(query).result()
+                    for row in result:
+                        if row.min_date:
+                            start_date = row.min_date.strftime("%Y-%m-%d")
+                except Exception:
+                    pass
+
+                if not start_date:
+                    return ({"status": "No hay forecasts pendientes de convertir a historical"}, 200)
 
             df = fetch_historical(start_date, end_date)
             df = transform_weather(df)
 
-            # Borrar datos existentes para esas fechas antes de re-insertar
+            # Borrar todo (forecast + historical) de esas fechas y meter el dato real
             delete_existing_dates(df["date"].tolist(), "historical")
             load_to_bigquery(df)
 

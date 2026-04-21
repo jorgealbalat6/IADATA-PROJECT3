@@ -375,7 +375,7 @@ module "schedulers" {
     {
       name = "scheduler-weather-historical"
       description = "Ingesta mensual de datos meteorologicos reales del mes anterior"
-      schedule = "0 2 1 * *" # Dia 1 cada mes 2:00 AM
+      schedule = "0 2 * * 1" # Lunes 2:00 AM
       uri = "${module.ingesta_tiempo.service_url}?mode=historical"
       service_account_email = google_service_account.ingesta_tiempo.email
     },
