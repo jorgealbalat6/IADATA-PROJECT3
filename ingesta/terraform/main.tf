@@ -295,6 +295,7 @@ module "ingesta_tiempo"{
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-tiempo:latest"
  
   container_port = 8080
+  max_instances = 2
  
   env_vars = {
     GCP_PROJECT = var.project_id
@@ -375,7 +376,7 @@ module "schedulers" {
     {
       name = "scheduler-weather-historical"
       description = "Ingesta mensual de datos meteorologicos reales del mes anterior"
-      schedule = "0 2 1 * *" # Dia 1 cada mes 2:00 AM
+      schedule = "0 2 * * 1" # Lunes 2:00 AM
       uri = "${module.ingesta_tiempo.service_url}?mode=historical"
       service_account_email = google_service_account.ingesta_tiempo.email
     },
