@@ -295,6 +295,7 @@ module "ingesta_tiempo"{
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-tiempo:latest"
  
   container_port = 8080
+  max_instances = 2
  
   env_vars = {
     GCP_PROJECT = var.project_id
