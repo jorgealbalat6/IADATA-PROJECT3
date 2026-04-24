@@ -237,13 +237,11 @@ def check_already_ingested(tabla: str, snapshot_date: str) -> bool:
 TABLA_CONFIG = {
     "listings": {"partition": "snapshot_date", "clustering": ["neighbourhood_cleansed", "room_type"]},
     "calendar": {"partition": "date",          "clustering": ["listing_id"]},
-    "reviews":  {"partition": "date",          "clustering": ["listing_id"]},
 }
 
 ARCHIVOS = {
     "listings": {"ruta": "data/listings.csv.gz", "tabla": "listings", "columnas": LISTING_COLS, "transform": transform_listings},
     "calendar": {"ruta": "data/calendar.csv.gz", "tabla": "calendar", "columnas": CALENDAR_COLS, "transform": transform_calendar},
-    "reviews":  {"ruta": "data/reviews.csv.gz",  "tabla": "reviews",  "columnas": REVIEW_COLS,   "transform": transform_reviews},
 }
 
 

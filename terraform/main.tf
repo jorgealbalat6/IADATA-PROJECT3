@@ -96,21 +96,6 @@ module "bigquery" {
       ])
     },
     {
-      dataset_id = "airbnb_raw"
-      table_id = "reviews"
-      partition_field = "date"
-      clustering = ["listing_id"]
-      schema = jsonencode([
-        { name = "listing_id", type = "INT64",  mode = "REQUIRED" },
-        { name = "id", type = "INT64",  mode = "REQUIRED" },
-        { name = "date", type = "DATE",   mode = "REQUIRED" },
-        { name = "reviewer_id", type = "INT64",  mode = "NULLABLE" },
-        { name = "reviewer_name", type = "STRING", mode = "NULLABLE" },
-        { name = "comments", type = "STRING", mode = "NULLABLE" },
-        { name = "snapshot_date", type = "DATE",   mode = "REQUIRED" }
-      ])
-    },
-    {
       dataset_id = "airbnb_features"
       table_id = "daily_listing_features"
       partition_field = "date"
@@ -224,6 +209,7 @@ module "ingesta_airbnb" {
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-airbnb:latest"
 
   container_port = 8080
+  memory = "2Gi"
   env_vars = {
     GCP_PROJECT = var.project_id
   }
@@ -397,4 +383,98 @@ module "schedulers" {
   ]
  
   api_services_dependency = module.api_services.enabled_apis
+}
+
+# ═══════════════════════════════════════════════
+# CI/CD - CLOUD BUILD
+# ═══════════════════════════════════════════════
+
+# Conexion GitHub
+resource "google_cloudbuildv2_repository" "this" {
+  project = var.project_id
+  location = var.region
+  name = var.github_repo
+  parent_connection = "projects/${var.project_id}/locations/${var.region}/connections/conexion_github"
+  remote_uri = "https://github.com/${var.github_owner}/${var.github_repo}.git"
+}
+ 
+# Triggers - uno por servicio
+locals {
+  cloud_build_services = [
+    {
+      name = "deploy-ingesta-airbnb"
+      folder = "ingesta/historicos"
+      image = "ingesta-airbnb"
+      service = "ingesta-airbnb"
+    },
+    {
+      name = "deploy-ingesta-holidays"
+      folder = "ingesta/festivos"
+      image = "ingesta-holidays"
+      service = "ingesta-holidays"
+    },
+    {
+      name = "deploy-ingesta-weather"
+      folder = "ingesta/tiempo"
+      image = "ingesta-weather"
+      service = "ingesta-weather"
+    },
+    {
+      name = "deploy-ingesta-events"
+      folder = "ingesta/eventos"
+      image = "ingesta-events"
+      service = "ingesta-events"
+    },
+  ]
+}
+ 
+resource "google_cloudbuild_trigger" "deploy" {
+  for_each = { for svc in local.cloud_build_services : svc.name => svc }
+ 
+  project = var.project_id
+  location = var.region
+  name = each.value.name
+  description = "Deploy ${each.value.service} on push to ${each.value.folder}/"
+ 
+  repository_event_config {
+    repository = google_cloudbuildv2_repository.this.id
+    push {
+      branch = var.github_branch
+    }
+  }
+ 
+  included_files = ["${each.value.folder}/**"]
+ 
+  substitutions = {
+    _FOLDER = each.value.folder
+    _IMAGE = each.value.image
+    _SERVICE = each.value.service
+    _REGION = var.region
+    _REGISTRY = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}"
+  }
+ 
+  filename = "cloudbuild.yaml"
+}
+ 
+# Permisos para Cloud Build
+data "google_project" "this" {
+  project_id = var.project_id
+}
+ 
+resource "google_project_iam_member" "cloudbuild_run_admin" {
+  project = var.project_id
+  role = "roles/run.admin"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+ 
+resource "google_project_iam_member" "cloudbuild_sa_user" {
+  project = var.project_id
+  role = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+ 
+resource "google_project_iam_member" "cloudbuild_ar_writer" {
+  project = var.project_id
+  role = "roles/artifactregistry.writer"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
 }
