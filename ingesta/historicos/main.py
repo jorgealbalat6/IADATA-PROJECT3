@@ -234,6 +234,7 @@ def check_already_ingested(tabla: str, snapshot_date: str) -> bool:
     return False
 
 
+
 TABLA_CONFIG = {
     "listings": {"partition": "snapshot_date", "clustering": ["neighbourhood_cleansed", "room_type"]},
     "calendar": {"partition": "date",          "clustering": ["listing_id"]},
