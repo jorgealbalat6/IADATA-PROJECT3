@@ -174,6 +174,10 @@ def transform_calendar(df: pd.DataFrame, snapshot_date: str, valid_ids: set) -> 
     before = len(df)
     df = df[df["listing_id"].isin(valid_ids)]
     logger.info(f"Calendar filtrado: {len(df):,} filas (de {before:,})")
+    logger.info(f"Calendar pre-filtro: {len(df):,} filas")
+    logger.info(f"Listing IDs en calendar: {df['listing_id'].nunique():,}")
+    logger.info(f"Valid IDs: {len(valid_ids):,}")
+    logger.info(f"Interseccion: {len(set(df['listing_id'].dropna().astype(int).tolist()).intersection(valid_ids)):,}")
 
     return df
 
@@ -232,7 +236,6 @@ def check_already_ingested(tabla: str, snapshot_date: str) -> bool:
     except Exception:
         pass
     return False
-
 
 
 TABLA_CONFIG = {
