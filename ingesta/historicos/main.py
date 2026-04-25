@@ -29,7 +29,7 @@ DATASET_RAW = "airbnb_raw"
 BASE_URL = "https://data.insideairbnb.com/spain/catalonia/barcelona"
 
 SNAPSHOT_DATES = [
-    "2025-12-14",
+    #"2025-12-14",
     "2025-09-14",
     "2025-06-12",
 ]
