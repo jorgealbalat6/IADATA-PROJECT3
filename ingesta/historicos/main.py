@@ -26,11 +26,12 @@ from google.cloud import bigquery
 # ──────────────────────────────────────────────
 PROJECT_ID = os.environ.get("GCP_PROJECT")
 DATASET_RAW = "airbnb_raw"
-BASE_URL = "https://data.insideairbnb.com/spain/vc/valencia"
+BASE_URL = "https://data.insideairbnb.com/spain/catalonia/barcelona"
 
 SNAPSHOT_DATES = [
-    "2025-09-23",
-    "2025-06-20",
+    "2025-12-14",
+    "2025-09-14",
+    "2025-06-12",
 ]
 
 LISTING_COLS = [
@@ -62,7 +63,6 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────
 # FUNCIONES
 # ──────────────────────────────────────────────
-
 def download_gz_to_df(url: str, columnas: list[str]) -> pd.DataFrame:
     """Descarga un .csv.gz y devuelve un DataFrame."""
     logger.info(f"Descargando: {url}")
@@ -75,9 +75,28 @@ def download_gz_to_df(url: str, columnas: list[str]) -> pd.DataFrame:
 
     size_mb = len(response.content) / (1024 * 1024)
     logger.info(f"Descargado: {size_mb:.2f} MB | {len(df):,} filas | {len(df.columns)} columnas")
-
+    logger.info(f"Columnas del CSV: {list(df.columns)}")
+    logger.info(f"Columnas pedidas: {columnas}")
+    
     cols_disponibles = [c for c in columnas if c in df.columns]
+    logger.info(f"Columnas encontradas: {cols_disponibles}")
+    
     return df[cols_disponibles]
+# def download_gz_to_df(url: str, columnas: list[str]) -> pd.DataFrame:
+#     """Descarga un .csv.gz y devuelve un DataFrame."""
+#     logger.info(f"Descargando: {url}")
+#     response = requests.get(url, timeout=300)
+#     response.raise_for_status()
+
+#     compressed = io.BytesIO(response.content)
+#     with gzip.open(compressed, "rb") as f:
+#         df = pd.read_csv(f, low_memory=False)
+
+#     size_mb = len(response.content) / (1024 * 1024)
+#     logger.info(f"Descargado: {size_mb:.2f} MB | {len(df):,} filas | {len(df.columns)} columnas")
+
+#     cols_disponibles = [c for c in columnas if c in df.columns]
+#     return df[cols_disponibles]
 
 
 def find_consistent_ids(snapshots: list[str]) -> set:
@@ -263,7 +282,7 @@ def ingest_airbnb(request):
     """
     force = request.args.get("force", "false").lower() == "true"
 
-    logger.info(f"=== Inicio ingesta Inside Airbnb Valencia ===")
+    logger.info(f"=== Inicio ingesta Inside Airbnb Barcelona ===")
     logger.info(f"Snapshots: {SNAPSHOT_DATES} | Force: {force}")
 
     # PASO 1: Encontrar listings con precio en TODOS los snapshots
@@ -317,7 +336,7 @@ def ingest_airbnb(request):
             has_errors = True
 
     response = {
-        "city": "valencia",
+        "city": "Barcelona",
         "consistent_listings": len(valid_ids),
         "snapshots_processed": len(SNAPSHOT_DATES),
         "results": all_results,

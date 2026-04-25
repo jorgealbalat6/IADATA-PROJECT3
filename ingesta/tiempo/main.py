@@ -33,9 +33,9 @@ DATASET = "airbnb_features"
 TABLE = "weather"
 TABLE_REF = f"{PROJECT_ID}.{DATASET}.{TABLE}"
 
-# Valencia coordenadas
-LATITUDE = 39.4699
-LONGITUDE = -0.3763
+# Barcelona coordenadas
+LATITUDE = 41.3874
+LONGITUDE = 2.1686
 TIMEZONE = "Europe/Madrid"
 
 # Variables diarias a descargar
