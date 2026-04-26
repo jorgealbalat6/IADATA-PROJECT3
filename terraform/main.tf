@@ -32,7 +32,7 @@ module "firestore" {
 module "bigquery" {
   source     = "./modules/bigquery"
   project_id = var.project_id
-  location   = "EU"
+  location   = "europe-west1"
 
   datasets = [
     {
@@ -209,7 +209,7 @@ module "ingesta_airbnb" {
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-airbnb:latest"
 
   container_port = 8080
-  memory = "2Gi"
+  memory = "4Gi"
   env_vars = {
     GCP_PROJECT = var.project_id
   }
@@ -380,6 +380,13 @@ module "schedulers" {
       uri = "${module.ingesta_holidays.service_url}?force=true"
       service_account_email = google_service_account.ingesta_holidays.email
     },
+    {
+      name                  = "scheduler-dbt-daily"
+      description           = "Transformacion dbt diaria"
+      schedule              = "30 2 * * *"
+      uri                   = "https://europe-west1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/project3grupo1/jobs/dbt-transform:run"
+      service_account_email = google_service_account.dbt_transform.email
+    },
   ]
  
   api_services_dependency = module.api_services.enabled_apis
@@ -405,4 +412,49 @@ resource "google_project_iam_member" "cloudbuild_ar_writer" {
   project = var.project_id
   role = "roles/artifactregistry.writer"
   member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_cloud_run_v2_job" "dbt_transform" {
+  name     = "dbt-transform"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    template {
+      containers {
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/dbt-transform:latest"
+
+        resources {
+          limits = {
+            memory = "3Gi"
+          }
+        }
+      }
+      timeout         = "600s"
+      service_account = google_service_account.dbt_transform.email
+    }
+  }
+
+  depends_on = [module.api_services]
+}
+
+resource "google_service_account" "dbt_transform" {
+  project      = var.project_id
+  account_id   = "sa-dbt-transform"
+  display_name = "DBT Transform Cloud Run Job"
+  description  = "Service account para el job de transformacion dbt"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+resource "google_project_iam_member" "dbt_bq_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.dbt_transform.email}"
+}
+
+resource "google_project_iam_member" "dbt_bq_job" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.dbt_transform.email}"
 }
