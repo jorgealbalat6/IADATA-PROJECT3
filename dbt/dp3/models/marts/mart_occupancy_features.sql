@@ -28,7 +28,7 @@ joined as (
         c.day_of_week,
         c.month,
         c.year,
-        c.week_of_year,
+        #c.week_of_year,
         c.is_weekend,
         c.days_to_next_holiday,
 
@@ -55,21 +55,21 @@ joined as (
         w.temp_min,
         w.temp_mean,
         w.precipitation_mm,
-        w.rain_mm,
-        w.wind_max_kmh,
-        w.weather_code,
+        #w.rain_mm,
+        #w.wind_max_kmh,
+        #w.weather_code,
 
         -- Eventos
         coalesce(e.num_events, 0) as num_events,
         coalesce(e.num_concerts, 0) as num_concerts,
         coalesce(e.num_sports, 0) as num_sports,
         coalesce(e.num_festivals, 0) as num_festivals,
-        coalesce(e.max_attendance, 0) as max_attendance,
-        coalesce(e.total_attendance, 0) as total_attendance,
+        coalesce(e.max_attendance, 0) as max_attendance, --asistencia al evento mas grande del dia
+        coalesce(e.total_attendance, 0) as total_attendance, --asistencia total eventos del dia
 
         -- Festivos
         if(h.date is not null, 1, 0) as is_holiday,
-        h.local_name as holiday_name
+        #h.local_name as holiday_name
 
     from calendar c
     left join listings l on c.listing_id = l.listing_id
