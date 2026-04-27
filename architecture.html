@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IADATA-PROJECT3 — Arquitectura Interactiva</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #252840;
+      --border: #2e3255;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --accent3: #ff6b6b;
+      --accent4: #ffd93d;
+      --accent5: #a8edea;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --success: #4ade80;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1d2e 0%, #252840 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header .logo { font-size: 28px; }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    header p { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+    .badge {
+      background: var(--accent);
+      color: white;
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Layout ── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      min-height: calc(100vh - 80px);
+    }
+
+    /* ── Diagram Canvas ── */
+    .canvas {
+      padding: 32px;
+      overflow: auto;
+    }
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-width: 700px;
+    }
+
+    /* ── Layer ── */
+    .layer {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      transition: border-color 0.2s;
+    }
+    .layer:hover { border-color: var(--accent); }
+    .layer-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .layer-icon { font-size: 1.4rem; }
+    .layer-title { font-size: 1rem; font-weight: 700; }
+    .layer-sub { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+
+    /* ── Node grid ── */
+    .node-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* ── Node card ── */
+    .node {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 150px;
+      position: relative;
+      user-select: none;
+    }
+    .node:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      border-color: var(--node-color, var(--accent));
+    }
+    .node.active {
+      border-color: var(--node-color, var(--accent));
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.25), 0 8px 24px rgba(0,0,0,0.4);
+      background: #2a2d45;
+    }
+    .node-icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .node-name { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+    .node-desc { font-size: 0.7rem; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .node-tag {
+      display: inline-block;
+      font-size: 0.6rem;
+      padding: 2px 7px;
+      border-radius: 99px;
+      font-weight: 700;
+      margin-top: 6px;
+      color: white;
+      background: var(--node-color, var(--accent));
+    }
+
+    /* ── Arrows between layers ── */
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+    .arrow-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+    .arrow-icon { font-size: 1.2rem; color: var(--accent2); }
+
+    /* ── Detail Panel ── */
+    .panel {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      padding: 28px 24px;
+      overflow-y: auto;
+      position: sticky;
+      top: 80px;
+      height: calc(100vh - 80px);
+    }
+    .panel-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .panel-placeholder .big { font-size: 3rem; }
+    .panel-placeholder p { font-size: 0.85rem; line-height: 1.6; }
+
+    .detail { display: none; }
+    .detail.visible { display: block; }
+
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-icon { font-size: 2.5rem; line-height: 1; }
+    .detail-title { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .detail-subtitle { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    .detail-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-weight: 700;
+      color: white;
+      margin-top: 6px;
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent2);
+      margin: 18px 0 8px;
+    }
+    .detail-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .detail-text strong { color: var(--text); }
+
+    .code-block {
+      background: #0d0f1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.72rem;
+      color: var(--accent5);
+      margin-top: 8px;
+      overflow-x: auto;
+      line-height: 1.6;
+      white-space: pre;
+    }
+    .code-block .kw { color: #c792ea; }
+    .code-block .fn { color: #82aaff; }
+    .code-block .str { color: #c3e88d; }
+    .code-block .cm { color: #546e7a; }
+
+    .pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pill {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .flow-num {
+      min-width: 22px; height: 22px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .flow-text { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+    .flow-text strong { color: var(--text); }
+
+    .table-mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      margin-top: 8px;
+    }
+    .table-mini th {
+      background: var(--surface2);
+      color: var(--muted);
+      padding: 6px 10px;
+      text-align: left;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .table-mini td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: top;
+    }
+    .table-mini td:first-child { color: var(--accent2); font-weight: 600; font-family: monospace; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 32px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Color per layer */
+    .l-sources .node { --node-color: #ff9f43; }
+    .l-ingesta .node { --node-color: #6c63ff; }
+    .l-bigquery .node { --node-color: #00d4aa; }
+    .l-dbt .node { --node-color: #4ade80; }
+    .l-ml .node { --node-color: #f687b3; }
+    .l-api .node { --node-color: #60a5fa; }
+    .l-infra .node { --node-color: #fbbf24; }
+
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; }
+      .panel { position: relative; height: auto; border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏗️</div>
+  <div>
+    <h1>IADATA-PROJECT3</h1>
+    <p>Predicción de Ocupación Airbnb · Barcelona · Google Cloud Platform</p>
+  </div>
+  <span class="badge" style="margin-left:auto">INTERACTIVO</span>
+</header>
+
+<div class="main">
+  <!-- ═══════════════ CANVAS ═══════════════ -->
+  <div class="canvas">
+    <div class="pipeline">
+
+      <!-- SOURCES -->
+      <div class="layer l-sources">
+        <div class="layer-header">
+          <span class="layer-icon">🌐</span>
+          <div>
+            <div class="layer-title">Fuentes Externas</div>
+            <div class="layer-sub">APIs públicas y datasets abiertos</div>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node" onclick="show('inside-airbnb')">
+            <div class="node-icon">🏠</div>
+            <div class="node-name">Inside Airbnb</div>
+            <div class="node-desc">Snapshots de listings y calendar de Barcelona</div>
+            <span class="node-tag">CSV.GZ</span>
+          </div>
+          <div class="node" onclick="show('predicthq')">
+            <div class="node-icon">🎤</div>
+            <div class="node-name">PredictHQ API</div>
+            <div class="node-desc">Eventos: conciertos, festivales, deportes...</div>
+            <span class="node-tag">REST API</span>
+          </div>
+          <div class="node" onclick="show('openmeteo')">
+            <div class="node-icon">🌤️</div>
+            <div class="node-name">Open-Meteo</div>
+            <div class="node-desc">Meteorología diaria · Sin API key</div>
+            <span class="node-tag">FREE API</span>
+          </div>
+          <div class="node" onclick="show('nager')">
+            <div class="node-icon">📅</div>
+            <div class="node-name">Nager.Date</div>
+            <div class="node-desc">Festivos nacionales y regionales de España</div>
+            <span class="node-tag">REST API</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-line"></div>
+        <span class="arrow-icon">⬇</span>
+        <div class="arrow-line"></div>
+        <span style="font-size:0.7rem">Cloud Run HTTP triggers</span>
+        <div class="arrow-line"></div>
+      </div>
+
+      <!-- INGESTA -->
+      <div class="layer l-ingesta">
+        <div class="layer-header">
+          <span class="layer-icon">⚙️</span>
+          <div>
+            <div class="layer-title">Ingesta — Cloud Run</div>
+            <div class="layer-sub">4 microservicios Python · Docker · Cloud Scheduler</div>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node" onclick="show('ingesta-airbnb')">
+            <div class="node-icon">🏢</div>
+            <div class="node-name">ingesta-airbnb</div>
+            <div class="node-desc">historicos/main.py · Snapshots consistentes</div>
+            <span class="node-tag">4 GiB RAM</span>
+          </div>
+          <div class="node" onclick="show('ingesta-eventos')">
+            <div class="node-icon">🎭</div>
+            <div class="node-name">ingesta-events</div>
+            <div class="node-desc">eventos/main.py · Paginación automática</div>
+            <span class="node-tag">Diario</span>
+          </div>
+          <div class="node" onclick="show('ingesta-tiempo')">
+            <div class="node-icon">🌡️</div>
+            <div class="node-name">tiempo</div>
+            <div class="node-desc">tiempo/main.py · Histórico + Forecast 14d</div>
+            <span class="node-tag">Diario</span>
+          </div>
+          <div class="node" onclick="show('ingesta-festivos')">
+            <div class="node-icon">🎉</div>
+            <div class="node-name">ingesta-holidays</div>
+            <div class="node-desc">festivos/main.py · España completa</div>
+            <span class="node-tag">Mensual</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-line"></div>
+        <span class="arrow-icon">⬇</span>
+        <div class="arrow-line"></div>
+        <span style="font-size:0.7rem">BigQuery LoadJob API</span>
+        <div class="arrow-line"></div>
+      </div>
+
+      <!-- BIGQUERY -->
+      <div class="layer l-bigquery">
+        <div class="layer-header">
+          <span class="layer-icon">🗄️</span>
+          <div>
+            <div class="layer-title">BigQuery — Almacenamiento</div>
+            <div class="layer-sub">2 datasets · 5 tablas · europe-west1</div>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node" onclick="show('bq-listings')">
+            <div class="node-icon">📋</div>
+            <div class="node-name">airbnb_raw.listings</div>
+            <div class="node-desc">Datos de pisos por snapshot</div>
+            <span class="node-tag">PARTICIONADA</span>
+          </div>
+          <div class="node" onclick="show('bq-calendar')">
+            <div class="node-icon">🗓️</div>
+            <div class="node-name">airbnb_raw.calendar</div>
+            <div class="node-desc">Disponibilidad y precio diario</div>
+            <span class="node-tag">PARTICIONADA</span>
+          </div>
+          <div class="node" onclick="show('bq-weather')">
+            <div class="node-icon">🌦️</div>
+            <div class="node-name">airbnb_features.weather</div>
+            <div class="node-desc">Temperatura, lluvia, viento...</div>
+            <span class="node-tag">PARTICIONADA</span>
+          </div>
+          <div class="node" onclick="show('bq-events')">
+            <div class="node-icon">🎸</div>
+            <div class="node-name">airbnb_features.events</div>
+            <div class="node-desc">Conciertos, deportes, festivales</div>
+            <span class="node-tag">PARTICIONADA</span>
+          </div>
+          <div class="node" onclick="show('bq-holidays')">
+            <div class="node-icon">🎊</div>
+            <div class="node-name">airbnb_features.holidays</div>
+            <div class="node-desc">Festivos nacionales y regionales</div>
+            <span class="node-tag">STATIC</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-line"></div>
+        <span class="arrow-icon">⬇</span>
+        <div class="arrow-line"></div>
+        <span style="font-size:0.7rem">dbt run → dbt test</span>
+        <div class="arrow-line"></div>
+      </div>
+
+      <!-- DBT -->
+      <div class="layer l-dbt">
+        <div class="layer-header">
+          <span class="layer-icon">🔄</span>
+          <div>
+            <div class="layer-title">dbt — Transformación (proyecto dp3)</div>
+            <div class="layer-sub">Staging → Intermediate → Marts · BigQuery backend</div>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node" onclick="show('stg-listings')">
+            <div class="node-icon">🧹</div>
+            <div class="node-name">stg_listings</div>
+            <div class="node-desc">Deduplica por snapshot más reciente</div>
+            <span class="node-tag">TABLE</span>
+          </div>
+          <div class="node" onclick="show('stg-calendar')">
+            <div class="node-icon">🧹</div>
+            <div class="node-name">stg_calendar</div>
+            <div class="node-desc">Genera is_occupied desde available</div>
+            <span class="node-tag">TABLE</span>
+          </div>
+          <div class="node" onclick="show('int-calendar')">
+            <div class="node-icon">🔗</div>
+            <div class="node-name">int_calendar</div>
+            <div class="node-desc">Features temporales + días a festivo</div>
+            <span class="node-tag">VIEW</span>
+          </div>
+          <div class="node" onclick="show('int-events')">
+            <div class="node-icon">🔗</div>
+            <div class="node-name">int_events_daily</div>
+            <div class="node-desc">Agrega eventos por día y categoría</div>
+            <span class="node-tag">VIEW</span>
+          </div>
+          <div class="node" onclick="show('mart')">
+            <div class="node-icon">⭐</div>
+            <div class="node-name">mart_occupancy_features</div>
+            <div class="node-desc">Tabla final ML-ready · Todo unido</div>
+            <span class="node-tag">TABLA MAESTRA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <div class="arrow-line"></div>
+        <span class="arrow-icon">⬇</span>
+        <div class="arrow-line"></div>
+        <span style="font-size:0.7rem">BigQuery connector · Jupyter</span>
+        <div class="arrow-line"></div>
+      </div>
+
+      <!-- ML -->
+      <div class="layer l-ml">
+        <div class="layer-header">
+          <span class="layer-icon">🤖</span>
+          <div>
+            <div class="layer-title">Machine Learning — Experimentos</div>
+            <div class="layer-sub">Notebooks por miembro del equipo · ml/experimentos/</div>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node" onclick="show('ml-marta')">
+            <div class="node-icon">📓</div>
+            <div class="node-name">Marta</div>
+            <div class="node-desc">experimento_01.ipynb</div>
+            <span class="node-tag">NOTEBOOK</span>
+          </div>
+          <div class="node" onclick="show('ml-team')">
+            <div class="node-icon">👥</div>
+            <div class="node-name">Adrian · Sergi · Yannis</div>
+            <div class="node-desc">Carpetas de experimentos individuales</div>
+            <span class="node-tag">NOTEBOOK</span>
+          </div>
+          <div class="node" onclick="show('ml-src')">
+            <div class="node-icon">📦</div>
+            <div class="node-name">ml/src/</div>
+            <div class="node-desc">Código Python compartido y reutilizable</div>
+            <span class="node-tag">MÓDULO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HORIZONTAL: API + INFRA -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- API -->
+        <div class="layer l-api">
+          <div class="layer-header">
+            <span class="layer-icon">🌐</span>
+            <div>
+              <div class="layer-title">API — FastAPI</div>
+              <div class="layer-sub">Cloud Run · Firestore</div>
+            </div>
+          </div>
+          <div class="node-grid">
+            <div class="node" onclick="show('api-usuarios')">
+              <div class="node-icon">👤</div>
+              <div class="node-name">POST /usuarios</div>
+              <div class="node-desc">Crea usuarios · SHA-256 · email único</div>
+              <span class="node-tag">201 CREATED</span>
+            </div>
+            <div class="node" onclick="show('api-health')">
+              <div class="node-icon">💚</div>
+              <div class="node-name">GET /health</div>
+              <div class="node-desc">Health check del servicio</div>
+              <span class="node-tag">200 OK</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- INFRA -->
+        <div class="layer l-infra">
+          <div class="layer-header">
+            <span class="layer-icon">🏗️</span>
+            <div>
+              <div class="layer-title">Infraestructura</div>
+              <div class="layer-sub">Terraform · Cloud Build</div>
+            </div>
+          </div>
+          <div class="node-grid">
+            <div class="node" onclick="show('terraform')">
+              <div class="node-icon">🔧</div>
+              <div class="node-name">Terraform</div>
+              <div class="node-desc">IaC completa · 7 módulos</div>
+              <span class="node-tag">IaC</span>
+            </div>
+            <div class="node" onclick="show('cloudbuild')">
+              <div class="node-icon">🚀</div>
+              <div class="node-name">Cloud Build</div>
+              <div class="node-desc">CI/CD · Docker build → deploy</div>
+              <span class="node-tag">CI/CD</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /pipeline -->
+  </div><!-- /canvas -->
+
+  <!-- ═══════════════ DETAIL PANEL ═══════════════ -->
+  <div class="panel" id="panel">
+    <div class="panel-placeholder" id="placeholder">
+      <div class="big">👈</div>
+      <p>Haz clic en cualquier<br/>componente del diagrama<br/>para ver sus detalles</p>
+    </div>
+
+    <!-- ── Details ── -->
+
+    <div class="detail" id="d-inside-airbnb">
+      <div class="detail-header">
+        <div class="detail-icon">🏠</div>
+        <div>
+          <div class="detail-title">Inside Airbnb</div>
+          <div class="detail-subtitle">insideairbnb.com · Open Data</div>
+          <span class="detail-badge" style="background:#ff9f43">FUENTE EXTERNA</span>
+        </div>
+      </div>
+      <div class="section-title">¿Qué es?</div>
+      <div class="detail-text">Dataset público con snapshots periódicos de los pisos Airbnb en Barcelona. Contiene información de listings, disponibilidad por día (calendar) y reseñas.</div>
+      <div class="section-title">Snapshots disponibles</div>
+      <div class="pill-list">
+        <span class="pill">2025-06-12</span>
+        <span class="pill">2025-09-14</span>
+      </div>
+      <div class="section-title">Archivos descargados</div>
+      <div class="detail-text">
+        <strong>listings.csv.gz</strong> — datos del piso (precio, habitaciones, reviews...)<br/>
+        <strong>calendar.csv.gz</strong> — disponibilidad diaria (hasta 365 días por piso)
+      </div>
+      <div class="section-title">URL base</div>
+      <div class="code-block">https://data.insideairbnb.com/
+  spain/catalonia/barcelona/
+  {SNAPSHOT_DATE}/data/listings.csv.gz</div>
+    </div>
+
+    <div class="detail" id="d-predicthq">
+      <div class="detail-header">
+        <div class="detail-icon">🎤</div>
+        <div>
+          <div class="detail-title">PredictHQ API</div>
+          <div class="detail-subtitle">predicthq.com · Requires token</div>
+          <span class="detail-badge" style="background:#ff9f43">FUENTE EXTERNA</span>
+        </div>
+      </div>
+      <div class="section-title">¿Qué devuelve?</div>
+      <div class="detail-text">Eventos en un radio de <strong>25 km</strong> alrededor de Barcelona (lat: 41.3874, lon: 2.1686) con métricas de asistencia estimada.</div>
+      <div class="section-title">Categorías recogidas</div>
+      <div class="pill-list">
+        <span class="pill">concerts</span><span class="pill">sports</span>
+        <span class="pill">festivals</span><span class="pill">conferences</span>
+        <span class="pill">expos</span><span class="pill">performing-arts</span>
+        <span class="pill">community</span>
+      </div>
+      <div class="section-title">Variable clave</div>
+      <div class="detail-text"><strong>PREDICTHQ_TOKEN</strong> — inyectada vía Terraform como variable de entorno en Cloud Run.</div>
+      <div class="code-block"><span class="cm"># Env var en Terraform</span>
+env_vars = {
+  GCP_PROJECT     = var.project_id
+  PREDICTHQ_TOKEN = var.predicthq_token
+}</div>
+    </div>
+
+    <div class="detail" id="d-openmeteo">
+      <div class="detail-header">
+        <div class="detail-icon">🌤️</div>
+        <div>
+          <div class="detail-title">Open-Meteo</div>
+          <div class="detail-subtitle">open-meteo.com · 100% gratuito · Sin API key</div>
+          <span class="detail-badge" style="background:#ff9f43">FUENTE EXTERNA</span>
+        </div>
+      </div>
+      <div class="section-title">APIs utilizadas</div>
+      <div class="detail-text">
+        <strong>archive-api.open-meteo.com</strong> — datos históricos reales<br/>
+        <strong>api.open-meteo.com</strong> — previsión 14 días
+      </div>
+      <div class="section-title">Variables descargadas</div>
+      <div class="pill-list">
+        <span class="pill">temp_max</span><span class="pill">temp_min</span>
+        <span class="pill">temp_mean</span><span class="pill">precipitation_mm</span>
+        <span class="pill">rain_mm</span><span class="pill">wind_max_kmh</span>
+        <span class="pill">weather_code</span>
+      </div>
+    </div>
+
+    <div class="detail" id="d-nager">
+      <div class="detail-header">
+        <div class="detail-icon">📅</div>
+        <div>
+          <div class="detail-title">Nager.Date API</div>
+          <div class="detail-subtitle">date.nager.at · Open Source · Sin API key</div>
+          <span class="detail-badge" style="background:#ff9f43">FUENTE EXTERNA</span>
+        </div>
+      </div>
+      <div class="section-title">¿Qué devuelve?</div>
+      <div class="detail-text">Todos los festivos de España (<strong>ES</strong>), nacionales y por comunidad autónoma. El código marca los que aplican a Cataluña (<strong>ES-CT</strong>).</div>
+      <div class="section-title">URL de ejemplo</div>
+      <div class="code-block">GET https://date.nager.at/api/v3/
+  PublicHolidays/2026/ES</div>
+    </div>
+
+    <div class="detail" id="d-ingesta-airbnb">
+      <div class="detail-header">
+        <div class="detail-icon">🏢</div>
+        <div>
+          <div class="detail-title">ingesta-airbnb</div>
+          <div class="detail-subtitle">ingesta/historicos/main.py</div>
+          <span class="detail-badge" style="background:#6c63ff">CLOUD RUN</span>
+        </div>
+      </div>
+      <div class="section-title">Lógica principal</div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>find_consistent_ids()</strong> — Descarga todos los snapshots y calcula la <strong>intersección</strong> de IDs con precio. Solo pisos presentes en todos los snapshots.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>transform_listings()</strong> — Convierte precio de "$1,200.00" → 1200.0, instant_bookable "t"/"f" → boolean.</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>load_to_bigquery()</strong> — Carga a <code>airbnb_raw.listings</code> y <code>airbnb_raw.calendar</code> con WRITE_APPEND.</div></div>
+      <div class="section-title">Query params HTTP</div>
+      <div class="pill-list">
+        <span class="pill">?force=true</span>
+        <span class="pill">?start_date=</span>
+        <span class="pill">?end_date=</span>
+      </div>
+      <div class="section-title">Recursos Terraform</div>
+      <div class="detail-text">Memory: <strong>4 GiB</strong> (archivos .gz grandes). Service account: <strong>sa-ingesta-airbnb</strong> con roles <code>bigquery.dataEditor</code> + <code>bigquery.jobUser</code>.</div>
+    </div>
+
+    <div class="detail" id="d-ingesta-eventos">
+      <div class="detail-header">
+        <div class="detail-icon">🎭</div>
+        <div>
+          <div class="detail-title">ingesta-events</div>
+          <div class="detail-subtitle">ingesta/eventos/main.py</div>
+          <span class="detail-badge" style="background:#6c63ff">CLOUD RUN</span>
+        </div>
+      </div>
+      <div class="section-title">Lógica principal</div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>fetch_events()</strong> — Paginación automática (limit=200). Itera mientras <code>data["next"]</code> no sea None.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>transform_events()</strong> — Extrae coordenadas (PredictHQ devuelve [lon, lat]), calcula duración en días.</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>load_to_bigquery()</strong> — Carga a <code>airbnb_features.events</code>. Elimina duplicados por event_id si force=true.</div></div>
+      <div class="section-title">Modos de ejecución</div>
+      <div class="code-block">/?                        → próximos 30 días
+/?mode=historical         → desde 2025-06-01
+/?start_date=&end_date=   → rango personalizado
+/?force=true              → re-ingesta</div>
+    </div>
+
+    <div class="detail" id="d-ingesta-tiempo">
+      <div class="detail-header">
+        <div class="detail-icon">🌡️</div>
+        <div>
+          <div class="detail-title">tiempo (ingesta meteo)</div>
+          <div class="detail-subtitle">ingesta/tiempo/main.py</div>
+          <span class="detail-badge" style="background:#6c63ff">CLOUD RUN</span>
+        </div>
+      </div>
+      <div class="section-title">Dos modos</div>
+      <div class="flow-step"><div class="flow-num">H</div><div class="flow-text"><strong>Histórico</strong> — Datos reales desde Open-Meteo Archive API. Borra y reemplaza las fechas existentes.</div></div>
+      <div class="flow-step"><div class="flow-num">F</div><div class="flow-text"><strong>Forecast</strong> — Previsión 14 días. Solo borra forecast previo de esas fechas (no toca el histórico).</div></div>
+      <div class="section-title">Estrategia de upsert</div>
+      <div class="detail-text"><strong>delete_existing_dates()</strong> — Si source=historical borra todas las filas de esas fechas. Si source=forecast, solo borra forecast para no sobreescribir datos reales validados.</div>
+      <div class="section-title">Scheduler</div>
+      <div class="detail-text">
+        <strong>Forecast:</strong> todos los días a las 2:00 AM<br/>
+        <strong>Histórico:</strong> cada lunes a las 2:00 AM
+      </div>
+    </div>
+
+    <div class="detail" id="d-ingesta-festivos">
+      <div class="detail-header">
+        <div class="detail-icon">🎉</div>
+        <div>
+          <div class="detail-title">ingesta-holidays</div>
+          <div class="detail-subtitle">ingesta/festivos/main.py</div>
+          <span class="detail-badge" style="background:#6c63ff">CLOUD RUN</span>
+        </div>
+      </div>
+      <div class="section-title">Lógica</div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>check_already_ingested(year)</strong> — Evita duplicados consultando BigQuery antes de ingestar.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>transform_holidays()</strong> — Marca <code>is_national</code> (counties=null) y <code>applies_to_valencia</code> (ES-CT en counties o nacional).</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Carga todos los festivos de España, no solo los catalanes. Un festivo en Madrid puede generar turismo.</div></div>
+      <div class="section-title">Query params</div>
+      <div class="code-block">/?year=2026           → un año
+/?year=2025,2026      → varios años
+/?force=true          → re-ingesta</div>
+    </div>
+
+    <div class="detail" id="d-bq-listings">
+      <div class="detail-header">
+        <div class="detail-icon">📋</div>
+        <div>
+          <div class="detail-title">airbnb_raw.listings</div>
+          <div class="detail-subtitle">BigQuery · Particionado por snapshot_date</div>
+          <span class="detail-badge" style="background:#00d4aa">BIGQUERY</span>
+        </div>
+      </div>
+      <div class="section-title">Columnas principales</div>
+      <table class="table-mini">
+        <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td>id</td><td>INT64</td><td>ID del listing</td></tr>
+        <tr><td>price</td><td>FLOAT64</td><td>Precio por noche (€)</td></tr>
+        <tr><td>neighbourhood_cleansed</td><td>STRING</td><td>Barrio</td></tr>
+        <tr><td>room_type</td><td>STRING</td><td>Tipo de habitación</td></tr>
+        <tr><td>review_scores_rating</td><td>FLOAT64</td><td>Puntuación media</td></tr>
+        <tr><td>snapshot_date</td><td>DATE</td><td>Fecha del snapshot</td></tr>
+      </table>
+      <div class="section-title">Partición y clustering</div>
+      <div class="detail-text">Particionado por <strong>snapshot_date</strong>. Clusterizado por <strong>neighbourhood_cleansed</strong> y <strong>room_type</strong> para optimizar queries por barrio.</div>
+    </div>
+
+    <div class="detail" id="d-bq-calendar">
+      <div class="detail-header">
+        <div class="detail-icon">🗓️</div>
+        <div>
+          <div class="detail-title">airbnb_raw.calendar</div>
+          <div class="detail-subtitle">BigQuery · Particionado por date</div>
+          <span class="detail-badge" style="background:#00d4aa">BIGQUERY</span>
+        </div>
+      </div>
+      <div class="section-title">¿Qué contiene?</div>
+      <div class="detail-text">Una fila por <strong>listing × día</strong>. Para cada piso y fecha indica si está disponible (<code>available</code>) y a qué precio. Es la tabla más grande del proyecto.</div>
+      <div class="section-title">Columnas clave</div>
+      <table class="table-mini">
+        <tr><th>Campo</th><th>Tipo</th></tr>
+        <tr><td>listing_id</td><td>INT64 REQUIRED</td></tr>
+        <tr><td>date</td><td>DATE REQUIRED</td></tr>
+        <tr><td>available</td><td>BOOLEAN</td></tr>
+        <tr><td>price</td><td>FLOAT64</td></tr>
+        <tr><td>snapshot_date</td><td>DATE REQUIRED</td></tr>
+      </table>
+    </div>
+
+    <div class="detail" id="d-bq-weather">
+      <div class="detail-header">
+        <div class="detail-icon">🌦️</div>
+        <div>
+          <div class="detail-title">airbnb_features.weather</div>
+          <div class="detail-subtitle">BigQuery · Particionado por date</div>
+          <span class="detail-badge" style="background:#00d4aa">BIGQUERY</span>
+        </div>
+      </div>
+      <div class="section-title">Columnas</div>
+      <table class="table-mini">
+        <tr><th>Campo</th><th>Descripción</th></tr>
+        <tr><td>date</td><td>Fecha del dato</td></tr>
+        <tr><td>temp_max/min/mean</td><td>Temperatura (°C)</td></tr>
+        <tr><td>precipitation_mm</td><td>Precipitación total</td></tr>
+        <tr><td>wind_max_kmh</td><td>Viento máximo</td></tr>
+        <tr><td>weather_code</td><td>Código WMO</td></tr>
+        <tr><td>source</td><td>'historical' o 'forecast'</td></tr>
+      </table>
+    </div>
+
+    <div class="detail" id="d-bq-events">
+      <div class="detail-header">
+        <div class="detail-icon">🎸</div>
+        <div>
+          <div class="detail-title">airbnb_features.events</div>
+          <div class="detail-subtitle">BigQuery · Particionado por start_date</div>
+          <span class="detail-badge" style="background:#00d4aa">BIGQUERY</span>
+        </div>
+      </div>
+      <div class="section-title">Columnas clave</div>
+      <table class="table-mini">
+        <tr><th>Campo</th><th>Descripción</th></tr>
+        <tr><td>event_id</td><td>ID único PredictHQ</td></tr>
+        <tr><td>category</td><td>concerts, sports, festivals...</td></tr>
+        <tr><td>rank / local_rank</td><td>Importancia del evento</td></tr>
+        <tr><td>phq_attendance</td><td>Asistencia estimada</td></tr>
+        <tr><td>duration_days</td><td>Duración en días</td></tr>
+      </table>
+    </div>
+
+    <div class="detail" id="d-bq-holidays">
+      <div class="detail-header">
+        <div class="detail-icon">🎊</div>
+        <div>
+          <div class="detail-title">airbnb_features.holidays</div>
+          <div class="detail-subtitle">BigQuery · Sin partición</div>
+          <span class="detail-badge" style="background:#00d4aa">BIGQUERY</span>
+        </div>
+      </div>
+      <div class="section-title">Campos booleanos de filtro</div>
+      <div class="detail-text">
+        <strong>is_national</strong> — true si aplica a toda España<br/>
+        <strong>applies_to_valencia</strong> — true si is_national OR (ES-CT in counties)<br/>
+        <strong>fixed</strong> — true si siempre cae el mismo día del año
+      </div>
+      <div class="section-title">Nota</div>
+      <div class="detail-text">Aunque el proyecto está en Barcelona, el código identifica la región como ES-CT (Cataluña) y la variable se llama <em>applies_to_valencia</em> por herencia del código original.</div>
+    </div>
+
+    <div class="detail" id="d-stg-listings">
+      <div class="detail-header">
+        <div class="detail-icon">🧹</div>
+        <div>
+          <div class="detail-title">stg_listings</div>
+          <div class="detail-subtitle">dbt · Staging · Materializado como TABLE</div>
+          <span class="detail-badge" style="background:#4ade80">DBT</span>
+        </div>
+      </div>
+      <div class="section-title">Transformación clave</div>
+      <div class="detail-text">Usa <strong>QUALIFY ROW_NUMBER()</strong> para quedarse solo con el snapshot más reciente de cada listing, eliminando duplicados entre snapshots.</div>
+      <div class="code-block"><span class="kw">QUALIFY</span> <span class="fn">row_number</span>() <span class="kw">OVER</span> (
+  <span class="kw">PARTITION BY</span> id
+  <span class="kw">ORDER BY</span> snapshot_date <span class="kw">DESC</span>
+) = 1</div>
+      <div class="section-title">Renombrado</div>
+      <div class="detail-text"><code>id</code> → <code>listing_id</code>, <code>price</code> → <code>listing_price</code></div>
+    </div>
+
+    <div class="detail" id="d-stg-calendar">
+      <div class="detail-header">
+        <div class="detail-icon">🧹</div>
+        <div>
+          <div class="detail-title">stg_calendar</div>
+          <div class="detail-subtitle">dbt · Staging · Materializado como TABLE</div>
+          <span class="detail-badge" style="background:#4ade80">DBT</span>
+        </div>
+      </div>
+      <div class="section-title">Feature generada</div>
+      <div class="detail-text">Genera la <strong>variable objetivo</strong> del modelo ML:</div>
+      <div class="code-block"><span class="kw">CASE WHEN</span> available = <span class="kw">false</span>
+  <span class="kw">THEN</span> 1 <span class="kw">ELSE</span> 0
+<span class="kw">END AS</span> is_occupied</div>
+      <div class="section-title">Lógica</div>
+      <div class="detail-text">En Airbnb, <code>available=false</code> significa que el piso <strong>no está disponible</strong>, es decir, está <strong>ocupado</strong> (reservado o bloqueado).</div>
+    </div>
+
+    <div class="detail" id="d-int-calendar">
+      <div class="detail-header">
+        <div class="detail-icon">🔗</div>
+        <div>
+          <div class="detail-title">int_calendar</div>
+          <div class="detail-subtitle">dbt · Intermediate · Materializado como VIEW</div>
+          <span class="detail-badge" style="background:#4ade80">DBT</span>
+        </div>
+      </div>
+      <div class="section-title">Features temporales añadidas</div>
+      <div class="pill-list">
+        <span class="pill">day_of_week</span><span class="pill">month</span>
+        <span class="pill">year</span><span class="pill">week_of_year</span>
+        <span class="pill">is_weekend</span>
+      </div>
+      <div class="section-title">Feature especial</div>
+      <div class="detail-text"><strong>days_to_next_holiday</strong> — Subconsulta que busca el festivo más próximo futuro para cada fila. Feature muy valiosa: los precios suben días antes de un festivo.</div>
+      <div class="code-block"><span class="fn">date_diff</span>(
+  (<span class="kw">SELECT MIN</span>(h.date)
+   <span class="kw">FROM</span> stg_holidays h
+   <span class="kw">WHERE</span> h.date >= calendar.date),
+  date, day
+) <span class="kw">AS</span> days_to_next_holiday</div>
+    </div>
+
+    <div class="detail" id="d-int-events">
+      <div class="detail-header">
+        <div class="detail-icon">🔗</div>
+        <div>
+          <div class="detail-title">int_events_daily</div>
+          <div class="detail-subtitle">dbt · Intermediate · Materializado como VIEW</div>
+          <span class="detail-badge" style="background:#4ade80">DBT</span>
+        </div>
+      </div>
+      <div class="section-title">Aggregación por día</div>
+      <div class="detail-text">Agrupa todos los eventos de un día en métricas resumen:</div>
+      <table class="table-mini">
+        <tr><th>Campo</th><th>Descripción</th></tr>
+        <tr><td>num_events</td><td>Total eventos del día</td></tr>
+        <tr><td>num_concerts</td><td>Conciertos</td></tr>
+        <tr><td>num_sports</td><td>Eventos deportivos</td></tr>
+        <tr><td>num_festivals</td><td>Festivales</td></tr>
+        <tr><td>max_attendance</td><td>Asistencia al evento más grande</td></tr>
+        <tr><td>total_attendance</td><td>Asistencia total del día</td></tr>
+      </table>
+    </div>
+
+    <div class="detail" id="d-mart">
+      <div class="detail-header">
+        <div class="detail-icon">⭐</div>
+        <div>
+          <div class="detail-title">mart_occupancy_features</div>
+          <div class="detail-subtitle">dbt · Marts · Tabla ML-ready MAESTRA</div>
+          <span class="detail-badge" style="background:#4ade80">DBT MART</span>
+        </div>
+      </div>
+      <div class="section-title">¿Qué es?</div>
+      <div class="detail-text">Tabla final que une <strong>todas las fuentes</strong> con JOINs sobre la fecha. Una fila = un listing en un día específico.</div>
+      <div class="section-title">Joins realizados</div>
+      <div class="flow-step"><div class="flow-num">→</div><div class="flow-text">calendar LEFT JOIN listings ON listing_id</div></div>
+      <div class="flow-step"><div class="flow-num">→</div><div class="flow-text">LEFT JOIN weather ON date</div></div>
+      <div class="flow-step"><div class="flow-num">→</div><div class="flow-text">LEFT JOIN int_events_daily ON date</div></div>
+      <div class="flow-step"><div class="flow-num">→</div><div class="flow-text">LEFT JOIN holidays ON date</div></div>
+      <div class="section-title">Filtro de fecha</div>
+      <div class="code-block">WHERE c.date BETWEEN <span class="str">'2025-06-12'</span>
+              AND <span class="str">'2026-04-30'</span></div>
+      <div class="section-title">Variable objetivo</div>
+      <div class="detail-text"><strong>is_occupied</strong> (0/1) — Lo que predice el modelo ML.</div>
+      <div class="section-title">Optimización BigQuery</div>
+      <div class="detail-text">Particionada por <strong>date</strong>. Clusterizada por <strong>neighbourhood_cleansed</strong> y <strong>room_type</strong>.</div>
+    </div>
+
+    <div class="detail" id="d-ml-marta">
+      <div class="detail-header">
+        <div class="detail-icon">📓</div>
+        <div>
+          <div class="detail-title">Experimento Marta</div>
+          <div class="detail-subtitle">ml/experimentos/marta/experimento_01.ipynb</div>
+          <span class="detail-badge" style="background:#f687b3">ML</span>
+        </div>
+      </div>
+      <div class="section-title">Input</div>
+      <div class="detail-text">Lee directamente de <strong>mart_occupancy_features</strong> en BigQuery usando el conector BigQuery de Python.</div>
+      <div class="section-title">Objetivo</div>
+      <div class="detail-text">Predecir <strong>is_occupied</strong> (si un piso estará ocupado en una fecha futura) usando todas las features disponibles: temporales, de meteorología, eventos y festivos.</div>
+    </div>
+
+    <div class="detail" id="d-ml-team">
+      <div class="detail-header">
+        <div class="detail-icon">👥</div>
+        <div>
+          <div class="detail-title">Equipo ML</div>
+          <div class="detail-subtitle">ml/experimentos/ — 4 miembros</div>
+          <span class="detail-badge" style="background:#f687b3">ML</span>
+        </div>
+      </div>
+      <div class="section-title">Estructura colaborativa</div>
+      <div class="pill-list">
+        <span class="pill">🧑 Adrian</span><span class="pill">👩 Marta</span>
+        <span class="pill">🧑 Sergi</span><span class="pill">🧑 Yannis</span>
+      </div>
+      <div class="section-title">Enfoque</div>
+      <div class="detail-text">Cada miembro experimenta de forma independiente (distintos modelos, features o estrategias) y comparte código reutilizable en <strong>ml/src/</strong>.</div>
+    </div>
+
+    <div class="detail" id="d-ml-src">
+      <div class="detail-header">
+        <div class="detail-icon">📦</div>
+        <div>
+          <div class="detail-title">ml/src/</div>
+          <div class="detail-subtitle">Módulo Python compartido</div>
+          <span class="detail-badge" style="background:#f687b3">ML</span>
+        </div>
+      </div>
+      <div class="section-title">Propósito</div>
+      <div class="detail-text">Contiene código Python reutilizable entre experimentos: funciones de carga de datos desde BigQuery, preprocesamiento, métricas de evaluación, etc. Evita duplicar lógica entre notebooks.</div>
+    </div>
+
+    <div class="detail" id="d-api-usuarios">
+      <div class="detail-header">
+        <div class="detail-icon">👤</div>
+        <div>
+          <div class="detail-title">POST /usuarios</div>
+          <div class="detail-subtitle">api/main.py · FastAPI · Firestore</div>
+          <span class="detail-badge" style="background:#60a5fa">API</span>
+        </div>
+      </div>
+      <div class="section-title">Validaciones</div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Valida email con <strong>EmailStr</strong> de Pydantic.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Contraseña mínimo <strong>8 caracteres</strong> (field_validator).</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Comprueba email único en Firestore (HTTP 409 si existe).</div></div>
+      <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Hashea con <strong>SHA-256</strong> antes de guardar.</div></div>
+      <div class="section-title">Modelo de entrada</div>
+      <div class="code-block"><span class="kw">class</span> <span class="fn">UsuarioInput</span>(BaseModel):
+    nombre: str
+    email: EmailStr
+    contrasena: str  <span class="cm"># min 8 chars</span></div>
+      <div class="section-title">Respuesta 201</div>
+      <div class="code-block">{ <span class="str">"id"</span>: <span class="str">"&lt;firestore_id&gt;"</span>,
+  <span class="str">"nombre"</span>: <span class="str">"..."</span>,
+  <span class="str">"email"</span>: <span class="str">"..."</span>,
+  <span class="str">"mensaje"</span>: <span class="str">"Usuario creado exitosamente"</span> }</div>
+    </div>
+
+    <div class="detail" id="d-api-health">
+      <div class="detail-header">
+        <div class="detail-icon">💚</div>
+        <div>
+          <div class="detail-title">GET /health</div>
+          <div class="detail-subtitle">api/main.py · FastAPI</div>
+          <span class="detail-badge" style="background:#60a5fa">API</span>
+        </div>
+      </div>
+      <div class="section-title">Propósito</div>
+      <div class="detail-text">Endpoint de health check usado por Cloud Run para comprobar que el servicio está vivo. Siempre devuelve <strong>200 OK</strong>.</div>
+      <div class="code-block">GET /health
+→ { <span class="str">"status"</span>: <span class="str">"ok"</span> }</div>
+      <div class="section-title">Autenticación</div>
+      <div class="detail-text">En Cloud Run, la API usa <strong>Application Default Credentials (ADC)</strong> para conectarse a Firestore. Sin necesidad de archivos de credenciales en producción.</div>
+    </div>
+
+    <div class="detail" id="d-terraform">
+      <div class="detail-header">
+        <div class="detail-icon">🔧</div>
+        <div>
+          <div class="detail-title">Terraform — IaC</div>
+          <div class="detail-subtitle">terraform/ · 7 módulos · europe-west1</div>
+          <span class="detail-badge" style="background:#fbbf24">INFRA</span>
+        </div>
+      </div>
+      <div class="section-title">Módulos</div>
+      <table class="table-mini">
+        <tr><th>Módulo</th><th>Recursos</th></tr>
+        <tr><td>api-services</td><td>Activa APIs GCP necesarias</td></tr>
+        <tr><td>bigquery</td><td>Datasets + tablas con esquemas exactos</td></tr>
+        <tr><td>cloud-run</td><td>5 servicios con SA dedicado</td></tr>
+        <tr><td>firestore</td><td>DB Firestore Europe</td></tr>
+        <tr><td>iam</td><td>Service Accounts + roles mínimos</td></tr>
+        <tr><td>scheduler</td><td>Jobs Cloud Scheduler</td></tr>
+        <tr><td>artifact-registry</td><td>Repositorio Docker</td></tr>
+      </table>
+      <div class="section-title">Principio de mínimos privilegios</div>
+      <div class="detail-text">Cada servicio de ingesta tiene su propio <strong>Service Account</strong> con solo <code>bigquery.dataEditor</code> y <code>bigquery.jobUser</code>. Nunca permisos de admin.</div>
+    </div>
+
+    <div class="detail" id="d-cloudbuild">
+      <div class="detail-header">
+        <div class="detail-icon">🚀</div>
+        <div>
+          <div class="detail-title">Cloud Build — CI/CD</div>
+          <div class="detail-subtitle">cloudbuild.yaml</div>
+          <span class="detail-badge" style="background:#fbbf24">CI/CD</span>
+        </div>
+      </div>
+      <div class="section-title">Pipeline (3 pasos)</div>
+      <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>docker build</strong> — Construye imagen con tags <code>:SHORT_SHA</code> y <code>:latest</code>.</div></div>
+      <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>docker push</strong> — Sube ambas tags a Artifact Registry.</div></div>
+      <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>gcloud run deploy</strong> — Despliega en Cloud Run usando la imagen <code>:SHORT_SHA</code> (inmutable).</div></div>
+      <div class="section-title">Substituciones</div>
+      <div class="code-block">_REGION:   europe-west1
+_REGISTRY: europe-west1-docker.pkg.dev/
+           project3grupo1/app-repo
+_IMAGE:    (se pasa por trigger)
+_SERVICE:  (se pasa por trigger)
+_FOLDER:   (contexto del Dockerfile)</div>
+      <div class="section-title">Logging</div>
+      <div class="detail-text">Solo usa <strong>Cloud Logging</strong> (sin logs en Cloud Storage) para reducir costes.</div>
+    </div>
+
+  </div><!-- /panel -->
+</div><!-- /main -->
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ff9f43"></div> Fuentes Externas</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6c63ff"></div> Cloud Run (Ingesta)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#00d4aa"></div> BigQuery</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> dbt</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f687b3"></div> Machine Learning</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> API FastAPI</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div> Infraestructura</div>
+  <span style="margin-left:auto;font-size:0.72rem;color:var(--muted)">👆 Haz clic en cualquier componente</span>
+</div>
+
+<script>
+  let current = null;
+
+  function show(id) {
+    // Hide placeholder
+    document.getElementById('placeholder').style.display = 'none';
+
+    // Hide all details
+    document.querySelectorAll('.detail').forEach(el => el.classList.remove('visible'));
+
+    // Remove active from all nodes
+    document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+
+    // Show selected
+    const detail = document.getElementById('d-' + id);
+    if (detail) detail.classList.add('visible');
+
+    // Mark active node
+    const nodes = document.querySelectorAll('.node');
+    nodes.forEach(n => {
+      if (n.getAttribute('onclick') === `show('${id}')`) {
+        n.classList.add('active');
+      }
+    });
+
+    // Scroll panel to top
+    document.getElementById('panel').scrollTop = 0;
+    current = id;
+  }
+</script>
+
+</body>
+</html>
