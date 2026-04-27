@@ -1,8 +1,13 @@
-FROM ghcr.io/dbt-labs/dbt-bigquery:1.7.latest
+FROM python:3.11-slim
 
-WORKDIR /usr/app
+WORKDIR /app
+
+RUN pip install --no-cache-dir dbt-bigquery==1.7.7 functions-framework
+
 COPY . .
 
-RUN dbt deps
+RUN dbt deps || true
 
-CMD ["run", "--profiles-dir", ".", "--target", "dev"]
+EXPOSE 8080
+
+CMD ["functions-framework", "--target=run_dbt", "--port=8080"]

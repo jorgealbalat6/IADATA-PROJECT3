@@ -97,28 +97,6 @@ module "bigquery" {
     },
     {
       dataset_id = "airbnb_features"
-      table_id = "daily_listing_features"
-      partition_field = "date"
-      clustering = ["neighbourhood_cleansed", "room_type"]
-      schema = jsonencode([
-        { name = "listing_id", type = "INT64", mode = "REQUIRED" },
-        { name = "neighbourhood_cleansed", type = "STRING", mode = "NULLABLE" },
-        { name = "room_type", type = "STRING", mode = "NULLABLE" },
-        { name = "accommodates", type = "INT64", mode = "NULLABLE" },
-        { name = "bedrooms", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "review_scores_rating", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "date", type = "DATE", mode = "REQUIRED" },
-        { name = "available", type = "BOOLEAN", mode = "NULLABLE" },
-        { name = "price", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "day_of_week", type = "INT64", mode = "NULLABLE" },
-        { name = "month", type = "INT64",   mode = "NULLABLE" },
-        { name = "reviews_last_30d", type = "INT64", mode = "NULLABLE" },
-        { name = "avg_price_nearby", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "count_nearby", type = "INT64", mode = "NULLABLE" }
-      ])
-    },
-    {
-      dataset_id = "airbnb_features"
       table_id = "holidays"
       schema = jsonencode([
         { name = "date", type = "DATE", mode = "REQUIRED" },
@@ -384,7 +362,7 @@ module "schedulers" {
       name                  = "scheduler-dbt-daily"
       description           = "Transformacion dbt diaria"
       schedule              = "30 2 * * *"
-      uri                   = "https://europe-west1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/project3grupo1/jobs/dbt-transform:run"
+      uri                   = module.dbt_transform.service_url
       service_account_email = google_service_account.dbt_transform.email
     },
   ]
@@ -414,28 +392,33 @@ resource "google_project_iam_member" "cloudbuild_ar_writer" {
   member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
 }
 
-resource "google_cloud_run_v2_job" "dbt_transform" {
-  name     = "dbt-transform"
-  location = var.region
-  project  = var.project_id
-
-  template {
-    template {
-      containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/dbt-transform:latest"
-
-        resources {
-          limits = {
-            memory = "3Gi"
-          }
-        }
-      }
-      timeout         = "600s"
-      service_account = google_service_account.dbt_transform.email
-    }
+module "dbt_transform" {
+  source = "./modules/cloud-run"
+ 
+  service_name          = "dbt"
+  region                = var.region
+  project_id            = var.project_id
+  service_account_email = google_service_account.dbt_transform.email
+ 
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/dbt:latest"
+ 
+  container_port = 8080
+  memory         = "2Gi"
+ 
+  env_vars = {
+    GCP_PROJECT = var.project_id
   }
-
-  depends_on = [module.api_services]
+ 
+    invokers = [
+    "serviceAccount:sa-dbt-transform@${var.project_id}.iam.gserviceaccount.com"
+  ]
+ 
+  extra_roles = [
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
+  ]
+ 
+  api_services_dependency = module.api_services.enabled_apis
 }
 
 resource "google_service_account" "dbt_transform" {
