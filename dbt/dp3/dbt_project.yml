@@ -33,12 +33,13 @@ models:
   dp3:
     # Config indicated by + and applies to all files under models/example/
     staging:
-      materialized: table
+      +materialized: table
     intermediate:
-      materialized: view
+      +materialized: view
     marts:
       +materialized: table
       +partition_by:
         field: date
         data_type: date
+        granularity: day
       +cluster_by: ["neighbourhood_cleansed", "room_type"]

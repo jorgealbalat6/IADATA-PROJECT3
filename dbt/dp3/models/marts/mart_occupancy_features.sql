@@ -76,7 +76,7 @@ joined as (
     left join weather w on c.date = w.date
     left join events e on c.date = e.date
     left join holidays h on c.date = h.date
-    where c.date between '2025-06-12' and '2026-04-30'
+    where c.date between '2025-06-12' and date_add(current_date(), interval 14 day)
 )
 
 select * from joined
