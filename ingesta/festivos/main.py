@@ -31,7 +31,7 @@ TABLE_REF = f"{PROJECT_ID}.{DATASET}.{TABLE}"
 
 API_BASE = "https://date.nager.at/api/v3/PublicHolidays"
 COUNTRY = "ES"
-VALENCIA_REGION = "ES-VC"  # Para marcar cuales aplican a Valencia
+VALENCIA_REGION = "ES-CT"  # Cataluña  
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

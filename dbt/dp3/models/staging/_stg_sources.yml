@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: airbnb_raw
+    database: project3grupo1
+    schema: airbnb_raw
+    tables:
+      - name: listings
+      - name: calendar
+
+  - name: airbnb_features
+    database: project3grupo1
+    schema: airbnb_features
+    tables:
+      - name: weather
+      - name: events
+      - name: holidays

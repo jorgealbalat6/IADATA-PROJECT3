@@ -12,3 +12,7 @@ override.tf.json
 *.exe
 .DS_Store
 Thumbs.db
+.venv
+__pycache__/
+.ipynb_checkpoints/
+*venv/

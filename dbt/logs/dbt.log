@@ -1,0 +1,29 @@
+[0m18:24:09.593466 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001855D589C40>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001855D58ADB0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x0000018559771040>]}
+
+
+============================== 18:24:09.609852 | 05edf20f-bb7f-400d-9bde-e431edd01d4d ==============================
+[0m18:24:09.609852 [info ] [MainThread]: Running with dbt=1.11.8
+[0m18:24:09.609852 [debug] [MainThread]: running dbt with arguments {'static_parser': 'True', 'no_print': 'None', 'version_check': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'target_path': 'None', 'printer_width': '80', 'write_json': 'True', 'introspect': 'True', 'log_cache_events': 'False', 'empty': 'None', 'cache_selected_only': 'False', 'fail_fast': 'False', 'debug': 'False', 'log_format': 'default', 'partial_parse': 'True', 'send_anonymous_usage_stats': 'True', 'quiet': 'False', 'warn_error': 'None', 'profiles_dir': 'C:\\Users\\jjorg\\.dbt', 'use_colors': 'True', 'indirect_selection': 'eager', 'invocation_command': 'dbt init dp3', 'use_experimental_parser': 'False', 'log_path': 'logs'}
+[0m18:24:09.638395 [debug] [MainThread]: Starter project path: C:\Users\jjorg\OneDrive\Escritorio\EDEM\DATAPROJECT3\IADATA-PROJECT3\dbt\venv\Lib\site-packages\dbt\include\starter_project
+[0m18:24:09.654144 [info ] [MainThread]: 
+Your new dbt project "dp3" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m18:24:09.654144 [info ] [MainThread]: Setting up your profile.
+[0m18:26:31.122423 [info ] [MainThread]: Profile dp3 written to C:\Users\jjorg\.dbt\profiles.yml using target's profile_template.yml and your supplied values. Run 'dbt debug' to validate the connection.
+[0m18:26:31.130513 [debug] [MainThread]: Command `dbt init` succeeded at 18:26:31.129310 after 141.69 seconds
+[0m18:26:31.132503 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001857A1DC0B0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001857A30BF80>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x000001855F4D60C0>]}
+[0m18:26:31.133140 [debug] [MainThread]: Flushing usage events
+[0m18:26:32.274360 [debug] [MainThread]: An error was encountered while trying to flush usage events

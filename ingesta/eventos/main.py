@@ -32,10 +32,9 @@ DATASET = "airbnb_features"
 TABLE = "events"
 TABLE_REF = f"{PROJECT_ID}.{DATASET}.{TABLE}"
 
-# Valencia coordenadas + radio
-LATITUDE = 39.4699
-LONGITUDE = -0.3763
-RADIUS = "30km"
+LATITUDE = 41.3874
+LONGITUDE = 2.1686
+RADIUS = "25km"
 
 # Categorías de eventos relevantes para turismo/precios Airbnb
 CATEGORIES = [

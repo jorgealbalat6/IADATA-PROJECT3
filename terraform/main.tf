@@ -32,7 +32,7 @@ module "firestore" {
 module "bigquery" {
   source     = "./modules/bigquery"
   project_id = var.project_id
-  location   = "EU"
+  location   = "europe-west1"
 
   datasets = [
     {
@@ -93,43 +93,6 @@ module "bigquery" {
         { name = "minimum_nights", type = "INT64", mode = "NULLABLE" },
         { name = "maximum_nights", type = "INT64", mode = "NULLABLE" },
         { name = "snapshot_date",  type = "DATE", mode = "REQUIRED" }
-      ])
-    },
-    {
-      dataset_id = "airbnb_raw"
-      table_id = "reviews"
-      partition_field = "date"
-      clustering = ["listing_id"]
-      schema = jsonencode([
-        { name = "listing_id", type = "INT64",  mode = "REQUIRED" },
-        { name = "id", type = "INT64",  mode = "REQUIRED" },
-        { name = "date", type = "DATE",   mode = "REQUIRED" },
-        { name = "reviewer_id", type = "INT64",  mode = "NULLABLE" },
-        { name = "reviewer_name", type = "STRING", mode = "NULLABLE" },
-        { name = "comments", type = "STRING", mode = "NULLABLE" },
-        { name = "snapshot_date", type = "DATE",   mode = "REQUIRED" }
-      ])
-    },
-    {
-      dataset_id = "airbnb_features"
-      table_id = "daily_listing_features"
-      partition_field = "date"
-      clustering = ["neighbourhood_cleansed", "room_type"]
-      schema = jsonencode([
-        { name = "listing_id", type = "INT64", mode = "REQUIRED" },
-        { name = "neighbourhood_cleansed", type = "STRING", mode = "NULLABLE" },
-        { name = "room_type", type = "STRING", mode = "NULLABLE" },
-        { name = "accommodates", type = "INT64", mode = "NULLABLE" },
-        { name = "bedrooms", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "review_scores_rating", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "date", type = "DATE", mode = "REQUIRED" },
-        { name = "available", type = "BOOLEAN", mode = "NULLABLE" },
-        { name = "price", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "day_of_week", type = "INT64", mode = "NULLABLE" },
-        { name = "month", type = "INT64",   mode = "NULLABLE" },
-        { name = "reviews_last_30d", type = "INT64", mode = "NULLABLE" },
-        { name = "avg_price_nearby", type = "FLOAT64", mode = "NULLABLE" },
-        { name = "count_nearby", type = "INT64", mode = "NULLABLE" }
       ])
     },
     {
@@ -224,6 +187,7 @@ module "ingesta_airbnb" {
   image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/ingesta-airbnb:latest"
 
   container_port = 8080
+  memory = "4Gi"
   env_vars = {
     GCP_PROJECT = var.project_id
   }
@@ -394,7 +358,86 @@ module "schedulers" {
       uri = "${module.ingesta_holidays.service_url}?force=true"
       service_account_email = google_service_account.ingesta_holidays.email
     },
+    {
+      name                  = "scheduler-dbt-daily"
+      description           = "Transformacion dbt diaria"
+      schedule              = "30 2 * * *"
+      uri                   = module.dbt_transform.service_url
+      service_account_email = google_service_account.dbt_transform.email
+    },
   ]
  
   api_services_dependency = module.api_services.enabled_apis
+}
+
+data "google_project" "this" {
+  project_id = var.project_id
+}
+ 
+resource "google_project_iam_member" "cloudbuild_run_admin" {
+  project = var.project_id
+  role = "roles/run.admin"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+ 
+resource "google_project_iam_member" "cloudbuild_sa_user" {
+  project = var.project_id
+  role = "roles/iam.serviceAccountUser"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+ 
+resource "google_project_iam_member" "cloudbuild_ar_writer" {
+  project = var.project_id
+  role = "roles/artifactregistry.writer"
+  member = "serviceAccount:${data.google_project.this.number}@cloudbuild.gserviceaccount.com"
+}
+
+module "dbt_transform" {
+  source = "./modules/cloud-run"
+ 
+  service_name          = "dbt"
+  region                = var.region
+  project_id            = var.project_id
+  service_account_email = google_service_account.dbt_transform.email
+ 
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/dbt:latest"
+ 
+  container_port = 8080
+  memory         = "2Gi"
+ 
+  env_vars = {
+    GCP_PROJECT = var.project_id
+  }
+ 
+    invokers = [
+    "serviceAccount:sa-dbt-transform@${var.project_id}.iam.gserviceaccount.com"
+  ]
+ 
+  extra_roles = [
+    "roles/bigquery.dataEditor",
+    "roles/bigquery.jobUser",
+  ]
+ 
+  api_services_dependency = module.api_services.enabled_apis
+}
+
+resource "google_service_account" "dbt_transform" {
+  project      = var.project_id
+  account_id   = "sa-dbt-transform"
+  display_name = "DBT Transform Cloud Run Job"
+  description  = "Service account para el job de transformacion dbt"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+resource "google_project_iam_member" "dbt_bq_editor" {
+  project = var.project_id
+  role    = "roles/bigquery.dataEditor"
+  member  = "serviceAccount:${google_service_account.dbt_transform.email}"
+}
+
+resource "google_project_iam_member" "dbt_bq_job" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.dbt_transform.email}"
 }
