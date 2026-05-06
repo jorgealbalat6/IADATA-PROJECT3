@@ -36,7 +36,7 @@ models:
       +materialized: table
     marts:
       +materialized: table
-      +partition_by:
-        field: date
-        data_type: date
-        granularity: day
+      # +partition_by:
+      #   field: date
+      #   data_type: date
+      #   granularity: day
