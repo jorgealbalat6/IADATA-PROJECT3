@@ -441,3 +441,54 @@ resource "google_project_iam_member" "dbt_bq_job" {
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.dbt_transform.email}"
 }
+
+# --- Service Account: API ---
+resource "google_service_account" "api" {
+  project      = var.project_id
+  account_id   = "sa-api"
+  display_name = "API Cloud Run"
+  description  = "Service account para la API REST"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+# --- Cloud Run: API ---
+module "api" {
+  source = "./modules/cloud-run"
+
+  service_name          = "api"
+  region                = var.region
+  project_id            = var.project_id
+  service_account_email = google_service_account.api.email
+
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/api:latest"
+
+  container_port = 8080
+  memory         = "1Gi"
+
+  env_vars = {
+    GCP_PROJECT        = var.project_id
+    FIRESTORE_DATABASE = module.firestore.database_name
+    GCP_PROJECT        = var.project_id
+    FIRESTORE_DATABASE = module.firestore.database_name
+    JWT_SECRET         = var.jwt_secret
+
+  }
+
+  invokers = ["allUsers"] #lo cambiare cuando meta firebase
+
+  extra_roles = [
+    "roles/datastore.user",
+  ]
+
+  api_services_dependency = module.api_services.enabled_apis
+}
+
+resource "google_storage_bucket" "vertex_ai" {
+  name          = "${var.project_id}-ml-models"
+  location      = var.region
+  project       = var.project_id
+  force_destroy = true
+
+  depends_on = [module.api_services.enabled_apis]
+}
