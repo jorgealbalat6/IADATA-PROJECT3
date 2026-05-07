@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+google-cloud-bigquery
+google-cloud-storage
+xgboost
+scikit-learn
+pandas
+numpy
+pydantic[email]
