@@ -33,6 +33,34 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # =============================================================================
+# 1.5. ELIMINAR VARIABLES REDUNDANTES
+# =============================================================================
+
+def remove_redundant_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Elimina variables que pueden causar sobreajuste espacial/temporal.
+    Se ejecuta al principio del Pipeline Global para limpiar el dataset.
+    """
+    df_clean = df.copy()
+    
+    # 1. Variables de Infraestructura y Coordenadas
+    cols_to_drop = [
+        'latitude', 'longitude',  # Sobreajuste espacial (micro-barrios)
+        'geometry', 'key_spatial', 'nom_barri', # Residuos del cruce geográfico
+        'year' # Memorización temporal. El modelo usará 'month' y 'lags'
+    ]
+    
+    # Eliminar solo si existen para evitar errores
+    cols_existentes = [c for c in cols_to_drop if c in df_clean.columns]
+    df_clean.drop(columns=cols_existentes, inplace=True)
+    
+    if cols_existentes:
+        print(f"[Redundantes] Columnas eliminadas: {cols_existentes}")
+    
+    return df_clean
+
+
+# =============================================================================
 # 2. FLAGS DE AUSENCIA (MNAR)
 # =============================================================================
 
@@ -80,12 +108,12 @@ def create_individual_lags(df: pd.DataFrame, target: str = 'is_occupied',
     df_out = df.sort_values(['listing_id', 'date']).copy()
 
     lag_cols = []
-    for lag in range(1, max_lag + 1):
+    for lag in range(2, max_lag + 1):
         col_name = f"{target}_lag_{lag}"
         df_out[col_name] = df_out.groupby('listing_id')[target].shift(lag)
         lag_cols.append(col_name)
 
-    print(f"[Lags Individuales] Creados {len(lag_cols)} lags (1 a {max_lag}) "
+    print(f"[Lags Individuales] Creados {len(lag_cols)} lags (2 a {max_lag}) "
           f"sobre '{target}' agrupados por listing_id.")
     return df_out
 
@@ -97,13 +125,13 @@ def create_individual_lags(df: pd.DataFrame, target: str = 'is_occupied',
 def create_occupancy_streaks(df: pd.DataFrame, target: str = 'is_occupied') -> pd.DataFrame:
     """
     Calcula días consecutivos que un listing lleva vacío u ocupado.
-    Aplica shift(1) para que el conteo sea hasta t-1 y evitar data leakage.
+    Aplica shift(2) para que el conteo sea hasta t-1 y evitar data leakage.
 
     Lógica:
     - Se crea un marcador de cambio de estado (occupied -> vacant o viceversa).
     - Se agrupa por listing_id y por cada "bloque" de estado continuo.
     - Se cuenta la duración acumulada dentro de cada bloque.
-    - Se aplica shift(1) al final para que el modelo solo vea rachas hasta ayer.
+    - Se aplica shift(2) al final para que el modelo solo vea rachas hasta ayer.
     """
     df_out = df.sort_values(['listing_id', 'date']).copy()
 
@@ -119,14 +147,14 @@ def create_occupancy_streaks(df: pd.DataFrame, target: str = 'is_occupied') -> p
     df_out['streak_occupied_raw'] = np.where(df_out[target] == 1, cumcount, 0)
     df_out['streak_vacant_raw'] = np.where(df_out[target] == 0, cumcount, 0)
 
-    # shift(1) para que el modelo vea la racha hasta t-1
-    df_out['streak_occupied'] = df_out.groupby('listing_id')['streak_occupied_raw'].shift(1)
-    df_out['streak_vacant'] = df_out.groupby('listing_id')['streak_vacant_raw'].shift(1)
+    # shift(2) para que el modelo vea la racha hasta t-2 (resiliencia ETL 48h)
+    df_out['streak_occupied'] = df_out.groupby('listing_id')['streak_occupied_raw'].shift(2)
+    df_out['streak_vacant'] = df_out.groupby('listing_id')['streak_vacant_raw'].shift(2)
 
     # Limpieza de columnas auxiliares
     df_out.drop(columns=['streak_occupied_raw', 'streak_vacant_raw'], inplace=True)
 
-    print("[Rachas] Creadas 'streak_occupied' y 'streak_vacant' con shift(1).")
+    print("[Rachas] Creadas 'streak_occupied' y 'streak_vacant' con shift(2).")
     return df_out
 
 
@@ -150,12 +178,12 @@ def create_neighbourhood_features(df: pd.DataFrame,
     daily_occ = df_out.groupby([space_col, 'date'])[target].mean().rename('occ_barrio_dia')
     daily_occ = daily_occ.reset_index()
 
-    # shift(1): valor del día anterior
-    daily_occ['occ_barrio_ayer'] = daily_occ.groupby(space_col)['occ_barrio_dia'].shift(1)
+    # shift(2): valor de hace 2 días (resiliencia ETL 48h)
+    daily_occ['occ_barrio_ayer'] = daily_occ.groupby(space_col)['occ_barrio_dia'].shift(2)
 
-    # Media móvil 7 días con shift(1): ventana de t-7 a t-1
+    # Media móvil 7 días con shift(2): ventana de t-8 a t-2
     daily_occ['occ_barrio_ma7'] = daily_occ.groupby(space_col)['occ_barrio_dia'].transform(
-        lambda x: x.shift(1).rolling(window=7, min_periods=1).mean()
+        lambda x: x.shift(2).rolling(window=7, min_periods=1).mean()
     )
 
     # Merge de vuelta al dataset (left join por barrio + fecha)
@@ -207,6 +235,41 @@ def create_cyclical_features(df: pd.DataFrame, day_col: str = 'day_of_week') -> 
 
 
 # =============================================================================
+# 7. BINARIZACIÓN Y CASTEO FINAL
+# =============================================================================
+
+def binarize_and_cast_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Binariza variables categóricas residuales (room_type, instant_bookable)
+    y fuerza el casteo de todas las variables numéricas a float64.
+    """
+    df_out = df.copy()
+    
+    # 1 si es casa entera, 0 si es habitación
+    if 'room_type' in df_out.columns:
+        df_out['is_entire_home'] = (df_out['room_type'] == 'Entire home/apt').astype('float64')
+        df_out.drop(columns=['room_type'], inplace=True)
+    
+    # Booleano a 0/1
+    if 'instant_bookable' in df_out.columns:
+        df_out['instant_bookable'] = df_out['instant_bookable'].astype('float64')
+        
+    # Casteo general a float64 (excepto IDs, fechas y target categórico principal)
+    exclude_cols = ['neighbourhood_cleansed', 'listing_id', 'date', 'is_occupied']
+    cols_to_float = [c for c in df_out.columns if c not in exclude_cols]
+    
+    for col in cols_to_float:
+        df_out[col] = df_out[col].astype('float64')
+        
+    # Asegurarnos de que el target es numérico
+    if 'is_occupied' in df_out.columns:
+        df_out['is_occupied'] = df_out['is_occupied'].astype('float64')
+        
+    print("[Casteo] Variables residuales binarizadas y features numéricas casteadas a float64.")
+    return df_out
+
+
+# =============================================================================
 # ORQUESTADOR: PIPELINE GLOBAL COMPLETO
 # =============================================================================
 
@@ -233,6 +296,9 @@ def run_global_pipeline(df: pd.DataFrame, max_lag: int = 14) -> pd.DataFrame:
     # Paso 1: Limpieza
     df = remove_duplicates(df)
 
+    # Paso 1.5: Redundantes
+    df = remove_redundant_features(df)
+
     # Paso 2: Flags MNAR
     df = create_missing_flags(df)
 
@@ -247,6 +313,9 @@ def run_global_pipeline(df: pd.DataFrame, max_lag: int = 14) -> pd.DataFrame:
 
     # Paso 6: Cíclicas
     df = create_cyclical_features(df)
+
+    # Paso 7: Binarización y casteo final
+    df = binarize_and_cast_features(df)
 
     # Resumen
     n_new_cols = df.shape[1] - n_cols_initial
