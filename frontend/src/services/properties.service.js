@@ -1,47 +1,26 @@
 // ============================================================
 // properties.service.js
-// GET  /properties        → load all registered properties
-// POST /properties        → register a new property
+// GET  /apartments        → load all registered properties
+// POST /apartments        → register a new property
 // Falls back to in-memory mock when backend is unavailable.
 // ============================================================
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
-// ── Mock store (used when backend is unreachable) ──────────
-let mockStore = [
-  {
-    id: 'mock-1',
-    name: 'Apartamento Eixample Centro',
-    neighbourhood: 'Eixample',
-    room_type: 'Entire home/apt',
-    accommodates: 4,
-    bedrooms: 2,
-    beds: 3,
-    number_of_reviews: 87,
-    review_scores_rating: 4.7,
-    created_at: '2026-01-15T10:00:00.000Z',
-  },
-  {
-    id: 'mock-2',
-    name: 'Habitación Born',
-    neighbourhood: 'Born',
-    room_type: 'Private room',
-    accommodates: 2,
-    bedrooms: 1,
-    beds: 1,
-    number_of_reviews: 34,
-    review_scores_rating: 4.3,
-    created_at: '2026-02-20T09:30:00.000Z',
-  },
-];
+// ── Mock store (usado solo si no hay backend disponible) ───
+let mockStore = [];
 
-/** Shared request helper with 5 s timeout. */
+/** Shared request helper with 5 s timeout + JWT auth. */
 const apiFetch = async (path, options = {}) => {
+  const token = localStorage.getItem('auth_token');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       signal: controller.signal,
       ...options,
     });
@@ -59,7 +38,7 @@ const apiFetch = async (path, options = {}) => {
  * Load all registered properties.
  *
  * Expected API call:
- *   GET {API_BASE}/properties
+ *   GET {API_BASE}/apartments
  *   Headers: { Content-Type: application/json }
  *
  * Expected response (200 OK):
@@ -83,7 +62,7 @@ const apiFetch = async (path, options = {}) => {
  */
 export const fetchProperties = async () => {
   try {
-    return await apiFetch('/properties');
+    return await apiFetch('/apartments');
   } catch {
     // TODO: remove mock fallback once backend is available
     return [...mockStore];
@@ -94,7 +73,7 @@ export const fetchProperties = async () => {
  * Register a new property.
  *
  * Expected API call:
- *   POST {API_BASE}/properties
+ *   POST {API_BASE}/apartments
  *   Headers: { Content-Type: application/json }
  *   Body (JSON):
  *   {
@@ -120,7 +99,7 @@ export const fetchProperties = async () => {
  */
 export const createProperty = async (data) => {
   try {
-    return await apiFetch('/properties', {
+    return await apiFetch('/apartments', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -140,7 +119,7 @@ export const createProperty = async (data) => {
  * Delete a property by id.
  *
  * Expected API call:
- *   DELETE {API_BASE}/properties/{id}
+ *   DELETE {API_BASE}/apartments/{id}
  *   Headers: { Content-Type: application/json }
  *
  * Expected response (204 No Content) — empty body.
@@ -150,7 +129,7 @@ export const createProperty = async (data) => {
  */
 export const deleteProperty = async (id) => {
   try {
-    await apiFetch(`/properties/${id}`, { method: 'DELETE' });
+    await apiFetch(`/apartments/${id}`, { method: 'DELETE' });
   } catch {
     // TODO: remove mock fallback once backend is available
     mockStore = mockStore.filter(p => p.id !== id);

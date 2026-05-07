@@ -4,18 +4,21 @@
 // when the backend is unavailable (demo / offline mode).
 // ============================================================
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+// Con el proxy de Vite configurado, la base queda vacía en dev
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 /** Deterministic mock calculation based on input features. */
 const mockPredict = (req) => {
   let p = 0.38;
 
-  if (req.is_weekend) p += 0.13;
-  if (req.is_holiday) p += 0.16;
+  if (req.instant_bookable) p += 0.10;
 
-  if (req.temp_mean >= 18 && req.temp_mean <= 28) p += 0.07;
-  else if (req.temp_mean >= 10)                   p += 0.03;
-  else if (req.temp_mean < 5 || req.temp_mean > 35) p -= 0.06;
+  if (req.listing_price < 50)       p += 0.08;
+  else if (req.listing_price < 100) p += 0.04;
+  else if (req.listing_price > 200) p -= 0.06;
+
+  if (req.minimum_nights <= 1) p += 0.05;
+  else if (req.minimum_nights > 7) p -= 0.05;
 
   if (req.review_scores_rating >= 4.7)      p += 0.10;
   else if (req.review_scores_rating >= 4.0) p += 0.05;
@@ -27,8 +30,13 @@ const mockPredict = (req) => {
   else if (req.number_of_reviews > 50) p += 0.04;
 
   const nbBonus = {
-    Eixample: 0.08, Born: 0.10, Barceloneta: 0.12,
-    Gràcia: 0.07, Centro: 0.07, Malasaña: 0.06,
+    'la Barceloneta': 0.12,
+    'el Barri Gòtic': 0.10,
+    "la Dreta de l'Eixample": 0.09,
+    'Sant Antoni': 0.08,
+    'el Raval': 0.06,
+    'la Vila de Gràcia': 0.07,
+    'el Poblenou': 0.07,
   };
   p += nbBonus[req.neighbourhood] ?? 0.04;
 
@@ -40,52 +48,47 @@ const mockPredict = (req) => {
 /**
  * Calls the real API to get an occupancy prediction.
  *
- * Expected API call:
- *   POST {API_BASE}/predict
- *   Headers: { Content-Type: application/json }
- *   Body (JSON):
- *   {
- *     neighbourhood:        "Eixample",
- *     room_type:            "Entire home/apt",
- *     accommodates:         2,
- *     bedrooms:             1,
- *     beds:                 1,
- *     number_of_reviews:    20,
- *     review_scores_rating: 4.5,
- *     date:                 "2026-05-06",
- *     is_weekend:           0,          ← 0 or 1
- *     is_holiday:           0,          ← 0 or 1
- *     temp_mean:            20          ← degrees Celsius
- *   }
- *
- * Expected response (200 OK):
- *   {
- *     probability: 0.73   ← float between 0 and 1
- *   }
- *
- * On any failure (timeout, network error, non-2xx status),
- * falls back automatically to the deterministic mock.
+ * POST /predict  (requiere JWT en Authorization: Bearer <token>)
+ * Body: { date, neighbourhood, room_type, accommodates,
+ *         listing_price, minimum_nights, number_of_reviews,
+ *         review_scores_rating, instant_bookable }
+ * Response: { probability: 0.73 }
  *
  * @param {import('../models/prediction').PredictionRequest} request
  * @returns {Promise<{ probability: number }>}
  */
 export const predictOccupancy = async (request) => {
+  const token = localStorage.getItem('auth_token');
   try {
     const controller = new AbortController();
-    const timer      = setTimeout(() => controller.abort(), 5000);
+    const timer      = setTimeout(() => controller.abort(), 10000);
+
+    const body = {
+      date:                 request.date,
+      neighbourhood:        request.neighbourhood,
+      room_type:            request.room_type,
+      accommodates:         request.accommodates,
+      listing_price:        request.listing_price,
+      minimum_nights:       request.minimum_nights,
+      number_of_reviews:    request.number_of_reviews,
+      review_scores_rating: request.review_scores_rating,
+      instant_bookable:     request.instant_bookable,
+    };
 
     const res = await fetch(`${API_BASE}/predict`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(request),
-      signal:  controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body:   JSON.stringify(body),
+      signal: controller.signal,
     });
     clearTimeout(timer);
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch {
-    // Simulate network latency for demo purposes
     await new Promise(r => setTimeout(r, 950));
     return { probability: mockPredict(request) };
   }

@@ -19,3 +19,4 @@ __pycache__/
 ml/experimentos/marta/*.pkl
 ml/experimentos/marta/neigh_mean_price.json
 *.parquet
+node_modules/
