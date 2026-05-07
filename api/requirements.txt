@@ -1,4 +1,4 @@
-fastapi
-uvicorn[standard]
-google-cloud-firestore
-pydantic[email]>=2.7.0
+flask==3.1.1
+gunicorn==23.0.0
+google-cloud-firestore==2.19.0
+PyJWT==2.9.0

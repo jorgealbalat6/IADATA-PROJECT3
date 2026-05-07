@@ -45,3 +45,9 @@ variable "github_app_installation_id" {
   type = number
   default = 0
 }
+
+variable "jwt_secret" {
+  description = "Secreto para firmar tokens JWT"
+  type        = string
+  sensitive   = true
+}
