@@ -37,12 +37,7 @@ const Predictor = () => {
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     const val = type === 'number' ? Number(value) : value;
-    if (name === 'date') {
-      const dow = new Date(value + 'T12:00:00').getDay();
-      setForm(f => ({ ...f, date: value, is_weekend: [0, 6].includes(dow) ? 1 : 0 }));
-    } else {
-      setForm(f => ({ ...f, [name]: val }));
-    }
+    setForm(f => ({ ...f, [name]: val }));
   };
 
   const handleSubmit = async (e) => {
@@ -94,12 +89,12 @@ const Predictor = () => {
                 <input type="number" name="accommodates" min="1" max="20" value={form.accommodates} onChange={handleChange} />
               </div>
               <div className="sc-form-group">
-                <label>Dormitorios</label>
-                <input type="number" name="bedrooms" min="0" max="20" value={form.bedrooms} onChange={handleChange} />
+                <label>Precio/noche (€)</label>
+                <input type="number" name="listing_price" min="1" max="2000" step="1" value={form.listing_price} onChange={handleChange} />
               </div>
               <div className="sc-form-group">
-                <label>Camas</label>
-                <input type="number" name="beds" min="1" max="20" value={form.beds} onChange={handleChange} />
+                <label>Mínimo noches</label>
+                <input type="number" name="minimum_nights" min="1" max="365" value={form.minimum_nights} onChange={handleChange} />
               </div>
             </div>
 
@@ -121,27 +116,13 @@ const Predictor = () => {
                 <label>Fecha</label>
                 <input type="date" name="date" value={form.date} onChange={handleChange} />
               </div>
-              <div className="sc-form-group">
-                <label>Temperatura media — <strong>{form.temp_mean}°C</strong></label>
-                <input
-                  type="range" name="temp_mean"
-                  min="-10" max="45" value={form.temp_mean}
-                  onChange={handleChange}
-                  className="sc-range"
-                />
-              </div>
             </div>
 
             <div className="sc-toggle-row">
               <Toggle
-                label="Fin de semana"
-                checked={form.is_weekend === 1}
-                onChange={e => setForm(f => ({ ...f, is_weekend: e.target.checked ? 1 : 0 }))}
-              />
-              <Toggle
-                label="Día festivo"
-                checked={form.is_holiday === 1}
-                onChange={e => setForm(f => ({ ...f, is_holiday: e.target.checked ? 1 : 0 }))}
+                label="Reserva instantánea"
+                checked={form.instant_bookable === true}
+                onChange={e => setForm(f => ({ ...f, instant_bookable: e.target.checked }))}
               />
             </div>
 
@@ -196,14 +177,14 @@ const Predictor = () => {
 
               <div className="result-details-grid">
                 {[
-                  ['Fecha',       form.date],
-                  ['Barrio',      form.neighbourhood],
-                  ['Tipo',        form.room_type],
-                  ['Temperatura', `${form.temp_mean}°C`],
-                  ['Fin de semana', form.is_weekend ? '✅ Sí' : '❌ No'],
-                  ['Festivo',     form.is_holiday  ? '✅ Sí' : '❌ No'],
-                  ['Huéspedes',   form.accommodates],
-                  ['Confianza modelo', getModelConfidence(result.probability)],
+                  ['Fecha',              form.date],
+                  ['Barrio',             form.neighbourhood],
+                  ['Tipo',               form.room_type],
+                  ['Precio/noche',       `${form.listing_price}€`],
+                  ['Mínimo noches',      form.minimum_nights],
+                  ['Huéspedes',          form.accommodates],
+                  ['Reserva inmediata',  form.instant_bookable ? '✅ Sí' : '❌ No'],
+                  ['Confianza modelo',   getModelConfidence(result.probability)],
                 ].map(([label, value]) => (
                   <div key={label} className="result-detail-item">
                     <span className="detail-label">{label}</span>

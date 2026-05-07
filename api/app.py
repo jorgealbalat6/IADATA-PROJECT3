@@ -300,6 +300,54 @@ def get_predictions_history(apartment_id):
     return jsonify(predictions), 200
 
 
+@app.route("/predict", methods=["POST"])
+@require_auth
+def predict():
+    """Llama al endpoint de Vertex AI y devuelve la predicción."""
+    import google.auth
+    import google.auth.transport.requests
+    import requests as req
+
+    data = request.get_json()
+
+    payload = {
+        "fecha":                  data.get("date"),
+        "neighbourhood_cleansed": data.get("neighbourhood"),
+        "room_type":              data.get("room_type"),
+        "accommodates":           data.get("accommodates", 2),
+        "listing_price":          data.get("listing_price", 80.0),
+        "minimum_nights":         data.get("minimum_nights", 2),
+        "number_of_reviews":      data.get("number_of_reviews", 0),
+        "review_scores_rating":   data.get("review_scores_rating"),
+        "instant_bookable":       data.get("instant_bookable", False),
+    }
+
+    credentials, _ = google.auth.default()
+    credentials.refresh(google.auth.transport.requests.Request())
+    token = credentials.token
+
+    endpoint = os.environ.get(
+        "VERTEX_ENDPOINT_URL",
+        "https://europe-west1-aiplatform.googleapis.com/v1/projects/project3grupo1/locations/europe-west1/endpoints/8138156259263119360:rawPredict"
+    )
+
+    response = req.post(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=30,
+    )
+
+    if not response.ok:
+        return jsonify({"error": "Error en el modelo"}), 502
+
+    result = response.json()
+    return jsonify({"probability": result.get("probabilidad")}), 200
+
+
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "service": "airbnb-occupancy-api"}), 200
