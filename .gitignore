@@ -15,4 +15,7 @@ Thumbs.db
 .venv
 __pycache__/
 .ipynb_checkpoints/
-*venv/
+*venv/*.parquet
+ml/experimentos/marta/*.pkl
+ml/experimentos/marta/neigh_mean_price.json
+*.parquet
