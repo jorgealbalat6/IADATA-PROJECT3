@@ -349,3 +349,4 @@ dbt test
 | Marta | `ml/experimentos/marta/` |
 | Sergi | `ml/experimentos/sergi/` |
 | Yannis | `ml/experimentos/yannis/` |
+| Jorge | NUESTRO DATA ENGEENIER |

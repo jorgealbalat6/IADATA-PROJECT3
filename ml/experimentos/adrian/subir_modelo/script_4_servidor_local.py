@@ -1,1 +1,0 @@
-#Pedirle a al Gemini/Claude que cree un script que concete el endpoint que ha escupido la consola despues de ejecutarse el script_3, al front que ha hecho sergi
