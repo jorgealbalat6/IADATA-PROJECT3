@@ -215,27 +215,7 @@ def create_neighbourhood_features(df: pd.DataFrame,
 
 
 # =============================================================================
-# 6. VARIABLES CÍCLICAS
-# =============================================================================
-
-def create_cyclical_features(df: pd.DataFrame, day_col: str = 'day_of_week') -> pd.DataFrame:
-    """
-    Transforma el día de la semana en representación cíclica (seno y coseno).
-    Permite que los modelos lineales entiendan que Lunes (1) está cerca de Domingo (7).
-    """
-    df_out = df.copy()
-
-    # Normalizamos al rango [0, 2π]. day_of_week va de 1 a 7.
-    period = 7
-    df_out['day_sin'] = np.sin(2 * np.pi * df_out[day_col] / period)
-    df_out['day_cos'] = np.cos(2 * np.pi * df_out[day_col] / period)
-
-    print(f"[Cíclicas] Creadas 'day_sin' y 'day_cos' a partir de '{day_col}'.")
-    return df_out
-
-
-# =============================================================================
-# 7. BINARIZACIÓN Y CASTEO FINAL
+# 6. BINARIZACIÓN Y CASTEO FINAL
 # =============================================================================
 
 def binarize_and_cast_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -311,10 +291,7 @@ def run_global_pipeline(df: pd.DataFrame, max_lag: int = 14) -> pd.DataFrame:
     # Paso 5: Features de barrio
     df = create_neighbourhood_features(df)
 
-    # Paso 6: Cíclicas
-    df = create_cyclical_features(df)
-
-    # Paso 7: Binarización y casteo final
+    # Paso 6: Binarización y casteo final
     df = binarize_and_cast_features(df)
 
     # Resumen
