@@ -479,6 +479,8 @@ module "api" {
 
   extra_roles = [
     "roles/datastore.user",
+    "roles/bigquery.jobUser",
+    "roles/bigquery.dataViewer",
   ]
 
   api_services_dependency = module.api_services.enabled_apis
@@ -491,4 +493,22 @@ resource "google_storage_bucket" "vertex_ai" {
   force_destroy = true
 
   depends_on = [module.api_services.enabled_apis]
+}
+
+module "frontend" {
+  source              = "./modules/cloud-run"
+  project_id          = var.project_id
+  region              = var.region
+  service_name        = "frontend"
+  image               = "europe-west1-docker.pkg.dev/${var.project_id}/app-repo/frontend:latest"
+  memory              = "2Gi"
+  service_account_email = google_service_account.sa_frontend.email
+  invokers            = ["allUsers"]
+  env_vars            = {}
+}
+
+resource "google_service_account" "sa_frontend" {
+  account_id   = "sa-frontend"
+  display_name = "Frontend Cloud Run"
+  project      = var.project_id
 }

@@ -20,3 +20,7 @@ ml/experimentos/marta/*.pkl
 ml/experimentos/marta/neigh_mean_price.json
 *.parquet
 node_modules/
+.venv/
+venv/
+ENV/
+dbt/venv/

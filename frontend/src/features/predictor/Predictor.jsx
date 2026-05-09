@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import useProperties from '../../hooks/useProperties';
 import usePrediction from '../../hooks/usePrediction';
 import {
-  createDefaultRequest, NEIGHBOURHOODS, ROOM_TYPES,
   getDemandLevel, getInterpretation, DEMAND_COLORS, getModelConfidence,
 } from '../../models/prediction';
 
@@ -19,114 +19,147 @@ const saveToHistory = (request, result) => {
   } catch { /* ignore */ }
 };
 
-/** Toggle checkbox with label. */
-const Toggle = ({ label, checked, onChange }) => (
-  <label className="sc-toggle-item">
-    <span className="sc-toggle-label">{label}</span>
-    <div className="sc-toggle">
-      <input type="checkbox" checked={checked} onChange={onChange} />
-      <span className="sc-toggle-slider" />
-    </div>
-  </label>
-);
-
 const Predictor = () => {
-  const [form, setForm] = useState(createDefaultRequest);
+  const { properties, loading: propsLoading } = useProperties();
   const { result, loading, error, predict } = usePrediction();
 
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    const val = type === 'number' ? Number(value) : value;
-    setForm(f => ({ ...f, [name]: val }));
-  };
+  const [selectedId, setSelectedId] = useState('');
+  const [date, setDate]             = useState(new Date().toISOString().split('T')[0]);
+  const [listingPrice, setListingPrice]     = useState(80);
+  const [minimumNights, setMinimumNights]   = useState(2);
+
+  const selected = properties.find(p => p.id === selectedId);
+
+  // Cuando seleccionas un apartamento, carga su precio y mínimo noches
+  useEffect(() => {
+    if (!selected) return;
+    setListingPrice(selected.listing_price || 80);
+    setMinimumNights(selected.minimum_nights || 2);
+  }, [selected]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selected) return;
+
+    // Detectar si es simulación (precio o mín noches distintos del apartamento)
+    const isSimulation =
+      listingPrice !== (selected.listing_price || 80) ||
+      minimumNights !== (selected.minimum_nights || 2);
+
+    const form = {
+      apartment_id:         selectedId,
+      is_simulation:        isSimulation,
+      date,
+      neighbourhood:        selected.neighbourhood,
+      room_type:            selected.room_type,
+      accommodates:         selected.accommodates,
+      listing_price:        listingPrice,
+      minimum_nights:       minimumNights,
+      number_of_reviews:    selected.number_of_reviews,
+      review_scores_rating: selected.review_scores_rating,
+      instant_bookable:     selected.instant_bookable || false,
+    };
+
     const data = await predict(form);
     if (data) saveToHistory(form, data);
   };
 
   const demand  = result ? getDemandLevel(result.probability) : null;
-  const message = result ? getInterpretation(form, result.probability) : null;
-  const pct     = result ? Math.round(result.probability * 100) : 0;
-  const color   = demand ? DEMAND_COLORS[demand.color] : '#1e3a5f';
+  const message = result && selected ? getInterpretation({
+    instant_bookable:     selected.instant_bookable || false,
+    listing_price:        listingPrice,
+    review_scores_rating: selected.review_scores_rating,
+    accommodates:         selected.accommodates,
+    number_of_reviews:    selected.number_of_reviews,
+    minimum_nights:       minimumNights,
+  }, result.probability) : null;
+  const pct   = result ? Math.round(result.probability * 100) : 0;
+  const color = demand ? DEMAND_COLORS[demand.color] : '#1e3a5f';
+
+  const today   = new Date().toISOString().split('T')[0];
+  const maxDate = new Date(Date.now() + 13 * 86400000).toISOString().split('T')[0];
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Predictor de Ocupación</h1>
-          <p className="page-subtitle">Introduce los datos del alojamiento y el día para predecir</p>
+          <p className="page-subtitle">Selecciona un alojamiento y simula diferentes escenarios</p>
         </div>
       </div>
 
       <div className="predictor-layout">
-
-        {/* ── FORM ── */}
         <div className="card predictor-form-card">
           <form onSubmit={handleSubmit}>
 
-            <div className="form-section-title">🏠 Datos del Alojamiento</div>
+            <div className="form-section-title">🏠 Selecciona tu Alojamiento</div>
 
-            <div className="sc-form-row-2">
-              <div className="sc-form-group">
-                <label>Barrio / Neighbourhood</label>
-                <select name="neighbourhood" value={form.neighbourhood} onChange={handleChange}>
-                  {NEIGHBOURHOODS.map(n => <option key={n} value={n}>{n}</option>)}
+            <div className="sc-form-group">
+              <label>Alojamiento</label>
+              {propsLoading ? (
+                <p>Cargando inmuebles...</p>
+              ) : properties.length === 0 ? (
+                <p>No tienes inmuebles registrados. Añade uno primero.</p>
+              ) : (
+                <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} required>
+                  <option value="">— Selecciona un alojamiento —</option>
+                  {properties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
                 </select>
-              </div>
-              <div className="sc-form-group">
-                <label>Tipo de habitación</label>
-                <select name="room_type" value={form.room_type} onChange={handleChange}>
-                  {ROOM_TYPES.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
+              )}
             </div>
+
+            {selected && (
+              <>
+                <div className="sc-form-row-2" style={{ marginTop: 12 }}>
+                  <div className="sc-form-group">
+                    <label>Barrio</label>
+                    <input type="text" value={selected.neighbourhood} disabled />
+                  </div>
+                  <div className="sc-form-group">
+                    <label>Tipo</label>
+                    <input type="text" value={selected.room_type} disabled />
+                  </div>
+                </div>
+                <div className="sc-form-row-2">
+                  <div className="sc-form-group">
+                    <label>Huéspedes</label>
+                    <input type="number" value={selected.accommodates} disabled />
+                  </div>
+                  <div className="sc-form-group">
+                    <label>Reseñas</label>
+                    <input type="number" value={selected.number_of_reviews} disabled />
+                  </div>
+                </div>
+                <div className="sc-form-group">
+                  <label>Reserva instantánea</label>
+                  <input type="text" value={selected.instant_bookable ? '✅ Sí' : '❌ No'} disabled />
+                </div>
+              </>
+            )}
+
+            <div className="form-section-title" style={{ marginTop: 24 }}>🗓️ Datos de la Predicción</div>
 
             <div className="sc-form-row-3">
               <div className="sc-form-group">
-                <label>Huéspedes</label>
-                <input type="number" name="accommodates" min="1" max="20" value={form.accommodates} onChange={handleChange} />
+                <label>Fecha</label>
+                <input type="date" value={date} min={today} max={maxDate}
+                  onChange={(e) => setDate(e.target.value)} />
               </div>
               <div className="sc-form-group">
                 <label>Precio/noche (€)</label>
-                <input type="number" name="listing_price" min="1" max="2000" step="1" value={form.listing_price} onChange={handleChange} />
+                <input type="number" min="1" max="2000" step="1" value={listingPrice}
+                  onChange={(e) => setListingPrice(Number(e.target.value))} />
               </div>
               <div className="sc-form-group">
                 <label>Mínimo noches</label>
-                <input type="number" name="minimum_nights" min="1" max="365" value={form.minimum_nights} onChange={handleChange} />
+                <input type="number" min="1" max="365" value={minimumNights}
+                  onChange={(e) => setMinimumNights(Number(e.target.value))} />
               </div>
             </div>
 
-            <div className="sc-form-row-2">
-              <div className="sc-form-group">
-                <label>Nº de reseñas</label>
-                <input type="number" name="number_of_reviews" min="0" value={form.number_of_reviews} onChange={handleChange} />
-              </div>
-              <div className="sc-form-group">
-                <label>Puntuación media (1–5)</label>
-                <input type="number" name="review_scores_rating" min="1" max="5" step="0.1" value={form.review_scores_rating} onChange={handleChange} />
-              </div>
-            </div>
-
-            <div className="form-section-title" style={{ marginTop: 24 }}>🗓️ Datos del Día</div>
-
-            <div className="sc-form-row-2">
-              <div className="sc-form-group">
-                <label>Fecha</label>
-                <input type="date" name="date" value={form.date} onChange={handleChange} />
-              </div>
-            </div>
-
-            <div className="sc-toggle-row">
-              <Toggle
-                label="Reserva instantánea"
-                checked={form.instant_bookable === true}
-                onChange={e => setForm(f => ({ ...f, instant_bookable: e.target.checked }))}
-              />
-            </div>
-
-            <button type="submit" className="predict-btn" disabled={loading}>
+            <button type="submit" className="predict-btn" disabled={loading || !selectedId}>
               {loading
                 ? <span className="predict-btn-loading"><span className="sc-spinner" />Calculando...</span>
                 : '🔮 Predecir Ocupación'}
@@ -136,14 +169,13 @@ const Predictor = () => {
           </form>
         </div>
 
-        {/* ── RESULT COLUMN ── */}
         <div className="predictor-result-col">
           {!result && !loading && (
             <div className="card result-placeholder">
               <div className="result-placeholder-icon">🔮</div>
               <p className="result-placeholder-title">Esperando predicción</p>
               <p className="result-placeholder-sub">
-                Rellena el formulario y pulsa <strong>Predecir Ocupación</strong>
+                Selecciona un alojamiento y pulsa <strong>Predecir Ocupación</strong>
               </p>
             </div>
           )}
@@ -177,13 +209,14 @@ const Predictor = () => {
 
               <div className="result-details-grid">
                 {[
-                  ['Fecha',              form.date],
-                  ['Barrio',             form.neighbourhood],
-                  ['Tipo',               form.room_type],
-                  ['Precio/noche',       `${form.listing_price}€`],
-                  ['Mínimo noches',      form.minimum_nights],
-                  ['Huéspedes',          form.accommodates],
-                  ['Reserva inmediata',  form.instant_bookable ? '✅ Sí' : '❌ No'],
+                  ['Alojamiento',        selected?.name],
+                  ['Fecha',              date],
+                  ['Barrio',             selected?.neighbourhood],
+                  ['Tipo',               selected?.room_type],
+                  ['Precio/noche',       `${listingPrice}€`],
+                  ['Mínimo noches',      minimumNights],
+                  ['Huéspedes',          selected?.accommodates],
+                  ['Reserva inmediata',  selected?.instant_bookable ? '✅ Sí' : '❌ No'],
                   ['Confianza modelo',   getModelConfidence(result.probability)],
                 ].map(([label, value]) => (
                   <div key={label} className="result-detail-item">
@@ -191,6 +224,29 @@ const Predictor = () => {
                     <span className="detail-value">{value}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Aviso informativo */}
+              <div style={{
+                marginTop: 20,
+                padding: '14px 16px',
+                background: result.saved ? '#f0fdf4' : '#f0f4ff',
+                borderRadius: 8,
+                borderLeft: `4px solid ${result.saved ? '#16a34a' : '#1e3a5f'}`,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: '#334155',
+              }}>
+                {result.saved ? (
+                  <>
+                    <strong>✅ Predicción guardada.</strong> Se ha registrado en el historial de <strong>{selected?.name}</strong> para el {date}.
+                  </>
+                ) : (
+                  <>
+                    <strong>ℹ️ Simulación.</strong> Has modificado el precio o mínimo de noches, por lo que esta predicción no se guarda.
+                    Para que se registre, usa los valores reales de tu alojamiento o edítalos en <strong>Inmuebles → ✏️ Editar Inmueble</strong>.
+                  </>
+                )}
               </div>
             </div>
           )}
