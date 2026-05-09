@@ -481,6 +481,7 @@ module "api" {
     "roles/datastore.user",
     "roles/bigquery.jobUser",
     "roles/bigquery.dataViewer",
+    "roles/aiplatform.user"
   ]
 
   api_services_dependency = module.api_services.enabled_apis
@@ -511,4 +512,44 @@ resource "google_service_account" "sa_frontend" {
   account_id   = "sa-frontend"
   display_name = "Frontend Cloud Run"
   project      = var.project_id
+}
+
+# --- Service Account para Cloud Scheduler ---
+resource "google_service_account" "sa_scheduler" {
+  project      = var.project_id
+  account_id   = "sa-scheduler"
+  display_name = "Cloud Scheduler Batch Predict"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+# Permitir al scheduler invocar la API en Cloud Run
+resource "google_cloud_run_service_iam_member" "scheduler_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = module.api.service_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.sa_scheduler.email}"
+}
+
+# --- Cloud Scheduler: Batch Predict a las 6 AM ---
+resource "google_cloud_scheduler_job" "batch_predict" {
+  project     = var.project_id
+  region      = var.region
+  name        = "batch-predict-daily"
+  description = "Prediccion automatica diaria de ocupacion para todos los apartamentos"
+  schedule    = "0 6 * * *"
+  time_zone   = "Europe/Madrid"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${module.api.service_url}/batch-predict"
+
+    oidc_token {
+      service_account_email = google_service_account.sa_scheduler.email
+      audience              = module.api.service_url
+    }
+  }
+
+  depends_on = [module.api_services.enabled_apis]
 }

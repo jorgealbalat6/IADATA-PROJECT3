@@ -208,7 +208,6 @@ const Predictor = () => {
         {result && !loading && (
           <div className="result-card">
 
-            {/* 1. Resultado principal */}
             <div className="result-card-header">
               <span className="result-card-label">Probabilidad de ocupación</span>
               <span className="demand-badge">{demand.label}</span>
