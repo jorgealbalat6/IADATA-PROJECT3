@@ -135,3 +135,23 @@ export const deleteProperty = async (id) => {
     mockStore = mockStore.filter(p => p.id !== id);
   }
 };
+/**
+ * Update a property by id.
+ *
+ * PUT {API_BASE}/apartments/{id}
+ * Body: fields to update
+ * Response: { message, id }
+ */
+export const updateProperty = async (id, data) => {
+  try {
+    return await apiFetch(`/apartments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // Mock fallback
+    const idx = mockStore.findIndex(p => p.id === id);
+    if (idx !== -1) mockStore[idx] = { ...mockStore[idx], ...data };
+    return { message: 'Actualizado', id };
+  }
+};

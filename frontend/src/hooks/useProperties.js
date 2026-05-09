@@ -7,8 +7,8 @@ import {
   fetchProperties,
   createProperty,
   deleteProperty,
+  updateProperty,
 } from '../services/properties.service';
-
 const useProperties = () => {
   const [properties, setProperties] = useState([]);
   const [loading,    setLoading]    = useState(false);
@@ -58,8 +58,24 @@ const useProperties = () => {
       setError(e.message || 'Error al eliminar el inmueble.');
     }
   }, []);
+  /** Update a property by id. */
+  const editProperty = useCallback(async (id, data) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await updateProperty(id, data);
+      setProperties(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+      return true;
+    } catch (e) {
+      setError(e.message || 'Error al actualizar el inmueble.');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  return { properties, loading, error, addProperty, removeProperty };
+  return { properties, loading, error, addProperty, removeProperty, editProperty };
+  
 };
 
 export default useProperties;

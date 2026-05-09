@@ -16,7 +16,6 @@ export { NEIGHBOURHOODS, ROOM_TYPES };
  * @property {number}  bedrooms             - Number of bedrooms
  * @property {number}  beds                 - Number of beds
  * @property {number}  number_of_reviews    - Total reviews count
- * @property {number}  review_scores_rating - Average rating (1–5)
  * @property {string}  [created_at]         - ISO timestamp from backend
  */
 
@@ -29,5 +28,7 @@ export const createDefaultProperty = () => ({
   bedrooms:             1,
   beds:                 1,
   number_of_reviews:    0,
-  review_scores_rating: 4.5,
+  listing_price:        80,
+  minimum_nights:       2,
+  instant_bookable:     false,
 });
