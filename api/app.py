@@ -22,9 +22,11 @@ from functools import wraps
 import jwt
 from flask import Flask, request, jsonify
 from google.cloud import firestore
+from flask_cors import CORS
 
 # ─── Init ───
 app = Flask(__name__)
+CORS(app)
 JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")
 db = firestore.Client(
     project=os.environ.get("GCP_PROJECT", "project3grupo1"),
@@ -328,7 +330,7 @@ def predict():
 
     endpoint = os.environ.get(
         "VERTEX_ENDPOINT_URL",
-        "https://europe-west1-aiplatform.googleapis.com/v1/projects/project3grupo1/locations/europe-west1/endpoints/8138156259263119360:rawPredict"
+        "https://europe-west1-aiplatform.googleapis.com/v1/projects/project3grupo1/locations/europe-west1/endpoints/2966335037181526016:rawPredict"
     )
 
     response = req.post(
