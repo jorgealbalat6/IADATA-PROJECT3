@@ -355,7 +355,8 @@ def predict():
     )
 
     if not response.ok:
-        return jsonify({"error": "Error en el modelo"}), 502
+        print(f"[PREDICT ERROR] Status: {response.status_code}, Body: {response.text[:500]}")
+        return jsonify({"error": "Error en el modelo", "detail": response.text[:200]}), 502
 
     result = response.json()
     probability = result.get("probabilidad")
