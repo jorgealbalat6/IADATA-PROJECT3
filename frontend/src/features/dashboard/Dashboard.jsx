@@ -1,124 +1,274 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDemandLevel, DEMAND_COLORS, getModelConfidence } from '../../models/prediction';
+import useProperties from '../../hooks/useProperties';
+import { getDemandLevel, DEMAND_COLORS } from '../../models/prediction';
 
-const KPICard = ({ title, value, subtitle, colorVar, icon }) => (
-  <div className="kpi-card">
-    <div className="kpi-icon" style={{ background: `${colorVar}18`, color: colorVar }}>
-      {icon}
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTH_NAMES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+const fetchUpcoming = async (apartmentId) => {
+  const token = localStorage.getItem('auth_token');
+  const res = await fetch(`${API_BASE}/apartments/${apartmentId}/predictions/upcoming`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
+
+/* ═══════════ Calendar Day Cell ═══════════ */
+
+const DayCell = ({ date, prediction }) => {
+  const d = new Date(date + 'T00:00:00');
+  const dayNum = d.getDate();
+  const dayName = DAY_NAMES[d.getDay()];
+  const monthName = MONTH_NAMES[d.getMonth()];
+  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+  if (!prediction) {
+    return (
+      <div className="cal-day cal-day-empty" style={{ opacity: 0.5 }}>
+        <div className="cal-day-header">
+          <span className="cal-day-name">{dayName}</span>
+          <span className="cal-day-num">{dayNum} {monthName}</span>
+        </div>
+        <div className="cal-day-body">
+          <span style={{ fontSize: 13, color: '#94a3b8' }}>Sin datos</span>
+        </div>
+      </div>
+    );
+  }
+
+  const prob = prediction.probability;
+  const pct = Math.round(prob * 100);
+  const demand = getDemandLevel(prob);
+  const color = DEMAND_COLORS[demand.color];
+
+  return (
+    <div className="cal-day" style={{
+      borderLeft: `4px solid ${color}`,
+      background: isWeekend ? '#f8fafc' : '#fff',
+    }}>
+      <div className="cal-day-header">
+        <span className="cal-day-name" style={{ fontWeight: isWeekend ? 700 : 500 }}>{dayName}</span>
+        <span className="cal-day-num">{dayNum} {monthName}</span>
+      </div>
+      <div className="cal-day-body">
+        <span className="cal-day-pct" style={{ color }}>{pct}%</span>
+        <span className={`badge badge-${demand.color}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+          {demand.label}
+        </span>
+      </div>
+      <div className="cal-day-bar">
+        <div className="cal-day-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
     </div>
-    <div className="kpi-body">
-      <div className="kpi-value" style={{ color: colorVar }}>{value}</div>
-      <div className="kpi-title">{title}</div>
-      {subtitle && <div className="kpi-subtitle">{subtitle}</div>}
+  );
+};
+
+/* ═══════════ KPI Summary ═══════════ */
+
+const KPISummary = ({ predictions }) => {
+  if (!predictions || predictions.length === 0) return null;
+
+  const probs = predictions.map(p => p.probability);
+  const avg = probs.reduce((a, b) => a + b, 0) / probs.length;
+  const max = Math.max(...probs);
+  const min = Math.min(...probs);
+  const highDays = probs.filter(p => p >= 0.7).length;
+
+  const avgDemand = getDemandLevel(avg);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 20 }}>
+      <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Ocupación Media</p>
+        <p style={{ fontSize: 26, fontWeight: 700, color: DEMAND_COLORS[avgDemand.color], margin: 0 }}>
+          {Math.round(avg * 100)}%
+        </p>
+      </div>
+      <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Día Más Alto</p>
+        <p style={{ fontSize: 26, fontWeight: 700, color: '#16a34a', margin: 0 }}>
+          {Math.round(max * 100)}%
+        </p>
+      </div>
+      <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Día Más Bajo</p>
+        <p style={{ fontSize: 26, fontWeight: 700, color: '#dc2626', margin: 0 }}>
+          {Math.round(min * 100)}%
+        </p>
+      </div>
+      <div className="card" style={{ padding: '16px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Días Alta Demanda</p>
+        <p style={{ fontSize: 26, fontWeight: 700, color: '#1e3a5f', margin: 0 }}>
+          {highDays} <span style={{ fontSize: 14, fontWeight: 400 }}>de 14</span>
+        </p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+/* ═══════════ Main Dashboard ═══════════ */
 
 const Dashboard = () => {
-  const [history, setHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('sc_history') || '[]'); }
-    catch { return []; }
+  const { properties, loading: propsLoading } = useProperties();
+  const [selectedId, setSelectedId] = useState('');
+  const [predictions, setPredictions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const selected = properties.find(p => p.id === selectedId);
+
+  // Auto-seleccionar el primer apartamento
+  useEffect(() => {
+    if (properties.length > 0 && !selectedId) {
+      setSelectedId(properties[0].id);
+    }
+  }, [properties]);
+
+  // Cargar predicciones cuando cambia el apartamento
+  useEffect(() => {
+    if (!selectedId) { setPredictions([]); return; }
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchUpcoming(selectedId);
+        if (!cancelled) setPredictions(data);
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [selectedId]);
+
+  // Generar los 14 días
+  const today = new Date();
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    return d.toISOString().split('T')[0];
   });
 
-  const avgProb = history.length > 0
-    ? history.reduce((s, h) => s + h.probability, 0) / history.length
-    : null;
+  // Mapear predicciones por fecha
+  const predMap = {};
+  predictions.forEach(p => { predMap[p.date] = p; });
 
-  const demand = avgProb !== null ? getDemandLevel(avgProb) : null;
-
-  const todayStr   = new Date().toISOString().split('T')[0];
-  const todayCount = history.filter(h => h.date === todayStr).length;
-
-  const clearHistory = () => {
-    localStorage.removeItem('sc_history');
-    setHistory([]);
-  };
+  const hasPredictions = predictions.length > 0;
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Resumen de predicciones de ocupación · StayCast</p>
+          <p className="page-subtitle">Predicciones de ocupación · Próximos 14 días</p>
         </div>
         <Link to="/predictor">
           <button className="btn btn-primary">🔮 Nueva Predicción</button>
         </Link>
       </div>
 
-      {/* KPI Grid */}
-      <div className="kpi-grid">
-        <KPICard
-          title="Probabilidad Media"
-          value={avgProb !== null ? `${Math.round(avgProb * 100)}%` : '—'}
-          subtitle="De todas tus predicciones"
-          colorVar="#1e3a5f"
-          icon="📊"
-        />
-        <KPICard
-          title="Nivel de Demanda"
-          value={demand ? demand.label : '—'}
-          subtitle={history.length > 0 ? `${history.length} predicción${history.length !== 1 ? 'es' : ''}` : 'Sin datos aún'}
-          colorVar={demand ? DEMAND_COLORS[demand.color] : '#94a3b8'}
-          icon="📈"
-        />
-        <KPICard
-          title="Confianza del Modelo"
-          value={avgProb !== null ? getModelConfidence(avgProb) : '—'}
-          subtitle="XGBoost accuracy estimada"
-          colorVar="#0891b2"
-          icon="🤖"
-        />
-        <KPICard
-          title="Predicciones Hoy"
-          value={todayCount}
-          subtitle="En esta sesión"
-          colorVar="#16a34a"
-          icon="🗓️"
-        />
-      </div>
-
-      {/* Recent history */}
-      <div className="section-header">
-        <h2 className="section-title">Predicciones Recientes</h2>
-        {history.length > 0 && (
-          <button className="btn-link" onClick={clearHistory}>Limpiar historial</button>
-        )}
-      </div>
-
-      {history.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">🔮</div>
-          <p><strong>No hay predicciones aún</strong></p>
-          <p className="empty-state-sub">Usa el predictor para calcular la probabilidad de ocupación</p>
-          <Link to="/predictor">
-            <button className="btn btn-primary" style={{ marginTop: 16 }}>Ir al Predictor</button>
-          </Link>
+      {/* Selector de apartamento */}
+      <div className="card" style={{ padding: '16px 24px', marginBottom: 20 }}>
+        <div className="sc-form-group" style={{ marginBottom: 0 }}>
+          <label>Alojamiento</label>
+          {propsLoading ? (
+            <p>Cargando inmuebles...</p>
+          ) : properties.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p>No tienes inmuebles registrados.</p>
+              <Link to="/properties">
+                <button className="btn btn-primary" style={{ marginTop: 8 }}>Añadir Inmueble</button>
+              </Link>
+            </div>
+          ) : (
+            <select value={selectedId} onChange={e => setSelectedId(e.target.value)}>
+              {properties.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {p.neighbourhood} ({p.room_type})
+                </option>
+              ))}
+            </select>
+          )}
         </div>
-      ) : (
-        <div className="card">
-          <div className="history-list">
-            {[...history].reverse().slice(0, 10).map((item) => {
-              const d   = getDemandLevel(item.probability);
-              const pct = Math.round(item.probability * 100);
-              return (
-                <div key={item.timestamp} className="history-item">
-                  <div className="history-left">
-                    <span className="history-date">{item.date}</span>
-                    <span className="history-meta">{item.neighbourhood} · {item.room_type}</span>
-                  </div>
-                  <div className="history-right">
-                    <div className="mini-bar-wrap">
-                      <div className="mini-bar-fill" style={{ width: `${pct}%`, backgroundColor: DEMAND_COLORS[d.color] }} />
-                    </div>
-                    <span className={`badge badge-${d.color}`}>{pct}%</span>
-                  </div>
-                </div>
-              );
-            })}
+      </div>
+
+      {loading && (
+        <div className="card" style={{ padding: 40, textAlign: 'center' }}>
+          <div className="sc-spinner-large" />
+          <p style={{ marginTop: 16, color: '#64748b' }}>Cargando predicciones...</p>
+        </div>
+      )}
+
+      {error && <div className="sc-error">⚠️ {error}</div>}
+
+      {!loading && selectedId && (
+        <>
+          {/* KPIs resumen */}
+          {hasPredictions && <KPISummary predictions={predictions} />}
+
+          {/* Calendario */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1e3a5f', margin: 0 }}>
+                Calendario de Ocupación
+              </h2>
+              {selected && (
+                <span style={{ fontSize: 13, color: '#64748b' }}>
+                  {selected.name} · {selected.neighbourhood}
+                </span>
+              )}
+            </div>
+
+            {!hasPredictions ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <p style={{ fontSize: 40, marginBottom: 8 }}>📅</p>
+                <p style={{ fontWeight: 600, color: '#1e3a5f' }}>Sin predicciones aún</p>
+                <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
+                  Las predicciones se generan automáticamente cada día a las 6:00 AM,
+                  o puedes crear una manualmente.
+                </p>
+                <Link to="/predictor">
+                  <button className="btn btn-primary">🔮 Ir al Predictor</button>
+                </Link>
+              </div>
+            ) : (
+              <div className="cal-grid">
+                {days.map(date => (
+                  <DayCell key={date} date={date} prediction={predMap[date]} />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* Leyenda */}
+          {hasPredictions && (
+            <div style={{
+              display: 'flex', gap: 16, justifyContent: 'center',
+              marginTop: 16, fontSize: 12, color: '#64748b',
+            }}>
+              {[
+                { label: 'Baja', color: DEMAND_COLORS.danger },
+                { label: 'Media', color: DEMAND_COLORS.warning },
+                { label: 'Alta', color: DEMAND_COLORS.success },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: item.color }} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
