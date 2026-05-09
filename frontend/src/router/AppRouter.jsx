@@ -8,9 +8,9 @@ import Properties from '../features/properties/Properties';
 /** Page titles keyed by route path — co-located with route definitions. */
 export const PAGE_TITLES = {
   '/':           'Dashboard',
-  '/predictor':  'Predictor de Ocupación',
+  '/predictor':  'Predictor',
   '/properties': 'Inmuebles',
-  '/insights':   'Insights del Modelo',
+  '/insights':   'Insights',
 };
 
 const AppRouter = () => (

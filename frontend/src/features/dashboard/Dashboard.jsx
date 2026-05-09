@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getDemandLevel, DEMAND_COLORS, getModelConfidence } from '../../models/prediction';
+import { useNavigate } from 'react-router-dom';
+import { getDemandLevel } from '../../models/prediction';
 
-const KPICard = ({ title, value, subtitle, colorVar, icon }) => (
+const KPICard = ({ title, value, subtitle }) => (
   <div className="kpi-card">
-    <div className="kpi-icon" style={{ background: `${colorVar}18`, color: colorVar }}>
-      {icon}
-    </div>
-    <div className="kpi-body">
-      <div className="kpi-value" style={{ color: colorVar }}>{value}</div>
-      <div className="kpi-title">{title}</div>
-      {subtitle && <div className="kpi-subtitle">{subtitle}</div>}
-    </div>
+    <div className="kpi-title">{title}</div>
+    <div className="kpi-value">{value}</div>
+    {subtitle && <div className="kpi-subtitle">{subtitle}</div>}
   </div>
 );
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sc_history') || '[]'); }
     catch { return []; }
@@ -40,42 +36,27 @@ const Dashboard = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Resumen de predicciones de ocupación · StayCast</p>
+          <p className="page-subtitle">Resumen de predicciones de ocupación</p>
         </div>
-        <Link to="/predictor">
-          <button className="btn btn-primary">🔮 Nueva Predicción</button>
-        </Link>
+        <button className="btn btn-primary" onClick={() => navigate('/predictor')}>Nueva predicción</button>
       </div>
 
       {/* KPI Grid */}
       <div className="kpi-grid">
         <KPICard
-          title="Probabilidad Media"
+          title="Probabilidad media"
           value={avgProb !== null ? `${Math.round(avgProb * 100)}%` : '—'}
           subtitle="De todas tus predicciones"
-          colorVar="#1e3a5f"
-          icon="📊"
         />
         <KPICard
-          title="Nivel de Demanda"
+          title="Nivel de demanda"
           value={demand ? demand.label : '—'}
           subtitle={history.length > 0 ? `${history.length} predicción${history.length !== 1 ? 'es' : ''}` : 'Sin datos aún'}
-          colorVar={demand ? DEMAND_COLORS[demand.color] : '#94a3b8'}
-          icon="📈"
         />
         <KPICard
-          title="Confianza del Modelo"
-          value={avgProb !== null ? getModelConfidence(avgProb) : '—'}
-          subtitle="XGBoost accuracy estimada"
-          colorVar="#0891b2"
-          icon="🤖"
-        />
-        <KPICard
-          title="Predicciones Hoy"
+          title="Predicciones hoy"
           value={todayCount}
           subtitle="En esta sesión"
-          colorVar="#16a34a"
-          icon="🗓️"
         />
       </div>
 
@@ -89,12 +70,9 @@ const Dashboard = () => {
 
       {history.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">🔮</div>
           <p><strong>No hay predicciones aún</strong></p>
           <p className="empty-state-sub">Usa el predictor para calcular la probabilidad de ocupación</p>
-          <Link to="/predictor">
-            <button className="btn btn-primary" style={{ marginTop: 16 }}>Ir al Predictor</button>
-          </Link>
+          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/predictor')}>Ir al predictor</button>
         </div>
       ) : (
         <div className="card">
@@ -110,7 +88,7 @@ const Dashboard = () => {
                   </div>
                   <div className="history-right">
                     <div className="mini-bar-wrap">
-                      <div className="mini-bar-fill" style={{ width: `${pct}%`, backgroundColor: DEMAND_COLORS[d.color] }} />
+                      <div className="mini-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
                     <span className={`badge badge-${d.color}`}>{pct}%</span>
                   </div>

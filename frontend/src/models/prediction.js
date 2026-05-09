@@ -51,17 +51,10 @@ export const DEMAND_COLORS = {
  * @returns {{ level: string, color: string, label: string }}
  */
 export const getDemandLevel = (probability) => {
-  if (probability >= 0.70) return { level: 'High',   color: 'success', label: 'Alta Demanda'  };
-  if (probability >= 0.40) return { level: 'Medium', color: 'warning', label: 'Demanda Media' };
-  return                          { level: 'Low',    color: 'danger',  label: 'Baja Demanda'  };
+  if (probability >= 0.70) return { level: 'High',   color: 'success', label: 'Alta'  };
+  if (probability >= 0.40) return { level: 'Medium', color: 'warning', label: 'Media' };
+  return                          { level: 'Low',    color: 'danger',  label: 'Baja'  };
 };
-
-/**
- * Estimated model confidence percentage.
- * @param {number} probability 0–1
- * @returns {string}
- */
-export const getModelConfidence = (probability) => `${Math.round(85 + probability * 10)}%`;
 
 /**
  * Human-readable explanation of the prediction.
@@ -71,16 +64,29 @@ export const getModelConfidence = (probability) => `${Math.round(85 + probabilit
  */
 export const getInterpretation = (request, probability) => {
   const factors = [];
-  if (request.instant_bookable)                    factors.push('reserva instantánea');
-  if (request.listing_price < 60)                  factors.push('precio competitivo');
-  if (request.review_scores_rating >= 4.5)         factors.push('alta valoración');
-  if (request.accommodates >= 4)                   factors.push('alta capacidad');
-  if (request.number_of_reviews > 50)              factors.push('muchas reseñas');
-  if (request.minimum_nights <= 1)                 factors.push('mínimo 1 noche');
+  if (request.instant_bookable)            factors.push('la disponibilidad inmediata');
+  if (request.listing_price < 60)          factors.push('el precio competitivo');
+  if (request.review_scores_rating >= 4.5) factors.push('la alta valoración de los huéspedes');
+  if (request.accommodates >= 4)           factors.push('la alta capacidad del alojamiento');
+  if (request.number_of_reviews > 50)      factors.push('el sólido historial de reseñas');
+  if (request.minimum_nights <= 1)         factors.push('la flexibilidad en la estancia mínima');
 
-  const demand = getDemandLevel(probability);
-  if (factors.length === 0) return `${demand.label}. No se detectan factores destacados.`;
-  return `${demand.label} debido a: ${factors.join(', ')}.`;
+  const join = (arr) => {
+    if (arr.length === 0) return '';
+    if (arr.length === 1) return arr[0];
+    return arr.slice(0, -1).join(', ') + ' y ' + arr[arr.length - 1];
+  };
+
+  if (probability >= 0.70) {
+    if (factors.length === 0) return 'La predicción es favorable para la fecha seleccionada.';
+    return `La predicción es favorable gracias a ${join(factors)}.`;
+  }
+  if (probability >= 0.40) {
+    if (factors.length === 0) return 'La predicción indica una demanda moderada para estas condiciones.';
+    return `La predicción indica una demanda moderada. Se detectan como factores positivos ${join(factors)}.`;
+  }
+  if (factors.length === 0) return 'La predicción sugiere una ocupación baja para estas condiciones.';
+  return `La predicción sugiere ocupación baja, aunque se identifican ${join(factors)}.`;
 };
 
 /** Creates fresh default form values evaluated at call time. */

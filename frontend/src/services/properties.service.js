@@ -10,6 +10,12 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '';
 // ── Mock store (usado solo si no hay backend disponible) ───
 let mockStore = [];
 
+const forceLogout = () => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
+  window.location.replace('/login');
+};
+
 /** Shared request helper with 5 s timeout + JWT auth. */
 const apiFetch = async (path, options = {}) => {
   const token = localStorage.getItem('auth_token');
@@ -25,6 +31,7 @@ const apiFetch = async (path, options = {}) => {
       ...options,
     });
     clearTimeout(timer);
+    if (res.status === 401) { forceLogout(); throw new Error('HTTP 401'); }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } finally {
