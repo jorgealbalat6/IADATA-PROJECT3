@@ -481,6 +481,7 @@ module "api" {
     "roles/datastore.user",
     "roles/bigquery.jobUser",
     "roles/bigquery.dataViewer",
+    "roles/aiplatform.user"
   ]
 
   api_services_dependency = module.api_services.enabled_apis

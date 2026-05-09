@@ -27,6 +27,7 @@ const Predictor = () => {
   const [date, setDate]             = useState(new Date().toISOString().split('T')[0]);
   const [listingPrice, setListingPrice]     = useState(80);
   const [minimumNights, setMinimumNights]   = useState(2);
+  const [wasSaved, setWasSaved]             = useState(false);
 
   const selected = properties.find(p => p.id === selectedId);
 
@@ -60,6 +61,7 @@ const Predictor = () => {
       instant_bookable:     selected.instant_bookable || false,
     };
 
+    setWasSaved(!isSimulation);
     const data = await predict(form);
     if (data) saveToHistory(form, data);
   };
@@ -230,14 +232,14 @@ const Predictor = () => {
               <div style={{
                 marginTop: 20,
                 padding: '14px 16px',
-                background: result.saved ? '#f0fdf4' : '#f0f4ff',
+                background: wasSaved ? '#f0fdf4' : '#f0f4ff',
                 borderRadius: 8,
-                borderLeft: `4px solid ${result.saved ? '#16a34a' : '#1e3a5f'}`,
+                borderLeft: `4px solid ${wasSaved ? '#16a34a' : '#1e3a5f'}`,
                 fontSize: 13,
                 lineHeight: 1.5,
                 color: '#334155',
               }}>
-                {result.saved ? (
+                {wasSaved ? (
                   <>
                     <strong>✅ Predicción guardada.</strong> Se ha registrado en el historial de <strong>{selected?.name}</strong> para el {date}.
                   </>
