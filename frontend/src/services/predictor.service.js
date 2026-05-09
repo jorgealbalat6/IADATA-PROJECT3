@@ -64,6 +64,8 @@ export const predictOccupancy = async (request) => {
     const timer      = setTimeout(() => controller.abort(), 10000);
 
     const body = {
+      apartment_id:         request.apartment_id,
+      is_simulation:        request.is_simulation,
       date:                 request.date,
       neighbourhood:        request.neighbourhood,
       room_type:            request.room_type,
@@ -72,7 +74,7 @@ export const predictOccupancy = async (request) => {
       minimum_nights:       request.minimum_nights,
       number_of_reviews:    request.number_of_reviews,
       review_scores_rating: request.review_scores_rating,
-      instant_bookable:     request.instant_bookable,
+      instant_bookable:     request.instant_bookable
     };
 
     const res = await fetch(`${API_BASE}/predict`, {
