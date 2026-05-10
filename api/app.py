@@ -2,8 +2,6 @@
 API REST — Airbnb Occupancy Prediction (Barcelona)
 
 Endpoints:
-    POST /auth/register          → Registro de usuario
-    POST /auth/login             → Login (devuelve token JWT)
     GET  /apartments             → Listar pisos del usuario
     POST /apartments             → Añadir piso
     PUT  /apartments/<id>        → Editar características de un piso
@@ -11,15 +9,19 @@ Endpoints:
     GET  /apartments/<id>/predictions          → Predicciones por rango (?start=&end=)
     GET  /apartments/<id>/predictions/upcoming → Próximas 2 semanas
     GET  /apartments/<id>/predictions/history  → Histórico últimos 2 meses
+    POST /predict                → Predicción Vertex AI
+    POST /batch-predict          → Predicción automática diaria
+    GET  /insights               → Métricas de mercado
+
+Auth: Firebase Authentication (ID tokens verificados con firebase-admin)
 """
 
 import os
 import datetime
-import hashlib
-import secrets
 from functools import wraps
 
-import jwt
+import firebase_admin
+from firebase_admin import credentials, auth as firebase_auth
 from flask import Flask, request, jsonify
 from google.cloud import firestore
 from flask_cors import CORS
@@ -27,23 +29,21 @@ from flask_cors import CORS
 # ─── Init ───
 app = Flask(__name__)
 CORS(app)
-JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")
+
+# Inicializar Firebase Admin
+# El projectId de Firebase puede diferir del GCP project
+FIREBASE_PROJECT = os.environ.get("FIREBASE_PROJECT", "project3grupo1-2f40e")
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(options={"projectId": FIREBASE_PROJECT})
+
 db = firestore.Client(
     project=os.environ.get("GCP_PROJECT", "project3grupo1"),
     database=os.environ.get("FIRESTORE_DATABASE", "(default)"),
 )
 
 
-def hash_password(password, salt=None):
-    """Hash password con SHA-256 + salt."""
-    if salt is None:
-        salt = secrets.token_hex(16)
-    hashed = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
-    return hashed, salt
-
-
 def require_auth(f):
-    """Decorador que exige token JWT válido."""
+    """Decorador que verifica Firebase ID token y asegura que el usuario existe en Firestore."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         header = request.headers.get("Authorization", "")
@@ -52,86 +52,23 @@ def require_auth(f):
 
         token = header.split("Bearer ")[1]
         try:
-            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            request.uid = payload["uid"]
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Token expirado"}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({"error": "Token inválido"}), 401
+            decoded = firebase_auth.verify_id_token(token)
+            request.uid = decoded["uid"]
+        except Exception:
+            return jsonify({"error": "Token inválido o expirado"}), 401
+
+        # Crear documento del usuario en Firestore si no existe
+        user_ref = db.collection("users").document(request.uid)
+        if not user_ref.get().exists:
+            user_ref.set({
+                "email": decoded.get("email", ""),
+                "name": decoded.get("name", decoded.get("email", "").split("@")[0]),
+                "created_at": firestore.SERVER_TIMESTAMP,
+            })
 
         return f(*args, **kwargs)
 
     return wrapper
-
-
-@app.route("/auth/register", methods=["POST"])
-def register():
-    """Registra un usuario nuevo."""
-    data = request.get_json()
-    email = data.get("email", "").strip().lower()
-    password = data.get("password", "")
-    name = data.get("name", "")
-
-    if not email or not password:
-        return jsonify({"error": "email y password son obligatorios"}), 400
-
-    # Comprobar si ya existe
-    users = db.collection("users").where("email", "==", email).limit(1).stream()
-    if any(True for _ in users):
-        return jsonify({"error": "El email ya está registrado"}), 409
-
-    hashed, salt = hash_password(password)
-
-    doc_ref = db.collection("users").document()
-    doc_ref.set({
-        "email": email,
-        "name": name,
-        "password_hash": hashed,
-        "salt": salt,
-        "created_at": firestore.SERVER_TIMESTAMP,
-    })
-
-    return jsonify({"uid": doc_ref.id, "email": email}), 201
-
-
-@app.route("/auth/login", methods=["POST"])
-def login():
-    """Login: devuelve JWT token."""
-    data = request.get_json()
-    email = data.get("email", "").strip().lower()
-    password = data.get("password", "")
-
-    if not email or not password:
-        return jsonify({"error": "email y password son obligatorios"}), 400
-
-    # Buscar usuario
-    users = db.collection("users").where("email", "==", email).limit(1).stream()
-    user_doc = None
-    for doc in users:
-        user_doc = doc
-        break
-
-    if not user_doc:
-        return jsonify({"error": "Credenciales incorrectas"}), 401
-
-    user_data = user_doc.to_dict()
-    hashed, _ = hash_password(password, user_data["salt"])
-
-    if hashed != user_data["password_hash"]:
-        return jsonify({"error": "Credenciales incorrectas"}), 401
-
-    # Generar JWT (expira en 24h)
-    token = jwt.encode(
-        {
-            "uid": user_doc.id,
-            "email": email,
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
-        },
-        JWT_SECRET,
-        algorithm="HS256",
-    )
-
-    return jsonify({"token": token, "uid": user_doc.id}), 200
 
 
 @app.route("/apartments", methods=["GET"])

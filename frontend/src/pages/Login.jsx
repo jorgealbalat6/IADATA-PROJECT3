@@ -6,11 +6,18 @@ const Login = ({ onGoRegister }) => {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) { setError('Completa todos los campos.'); return; }
-    login(email, password);
+    setLoading(true);
+    setError('');
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.error);
+    }
+    setLoading(false);
   };
 
   return (
@@ -47,12 +54,11 @@ const Login = ({ onGoRegister }) => {
 
           {error && <p className="auth-error">{error}</p>}
 
-          <button type="submit" className="auth-btn">Entrar</button>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
 
-        <p className="auth-link-text" style={{ marginTop: 14 }}>
-          <button className="auth-link-btn">¿Olvidaste tu contraseña?</button>
-        </p>
         <p className="auth-link-text">
           ¿No tienes cuenta?{' '}
           <button className="auth-link-btn" onClick={onGoRegister}>Regístrate</button>

@@ -8,12 +8,20 @@ const Register = ({ onGoLogin }) => {
   const [password, setPassword]     = useState('');
   const [confirm, setConfirm]       = useState('');
   const [error, setError]           = useState('');
+  const [loading, setLoading]       = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !email || !password || !confirm) { setError('Completa todos los campos.'); return; }
     if (password !== confirm) { setError('Las contraseñas no coinciden.'); return; }
-    register(name, email, password);
+    if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+    setLoading(true);
+    setError('');
+    const result = await register(name, email, password);
+    if (!result.success) {
+      setError(result.error);
+    }
+    setLoading(false);
   };
 
   return (
@@ -52,7 +60,7 @@ const Register = ({ onGoLogin }) => {
             <input
               className="auth-input"
               type="password"
-              placeholder="Contraseña"
+              placeholder="Contraseña (mín. 6 caracteres)"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
@@ -72,7 +80,9 @@ const Register = ({ onGoLogin }) => {
 
           {error && <p className="auth-error">{error}</p>}
 
-          <button type="submit" className="auth-btn">Crear Cuenta</button>
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
+          </button>
         </form>
 
         <p className="auth-link-text" style={{ marginTop: 14 }}>

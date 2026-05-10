@@ -24,8 +24,20 @@ const AppLayout = () => {
 };
 
 const App = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [authScreen, setAuthScreen] = useState('login');
+
+  // Mientras Firebase comprueba si hay sesión activa
+  if (loading) {
+    return (
+      <div className="auth-page">
+        <div style={{ textAlign: 'center' }}>
+          <div className="sc-spinner-large" />
+          <p style={{ marginTop: 16, color: '#64748b' }}>Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return authScreen === 'login'
@@ -36,4 +48,3 @@ const App = () => {
 };
 
 export default App;
-
