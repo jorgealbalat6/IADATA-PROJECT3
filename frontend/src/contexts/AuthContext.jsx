@@ -84,6 +84,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     await signOut(auth);
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('staycast_chat_history');
     setUser(null);
   };
 
