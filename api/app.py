@@ -43,7 +43,7 @@ db = firestore.Client(
 
 
 def require_auth(f):
-    """Decorador que verifica Firebase ID token."""
+    """Decorador que verifica Firebase ID token y asegura que el usuario existe en Firestore."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         header = request.headers.get("Authorization", "")
@@ -56,6 +56,15 @@ def require_auth(f):
             request.uid = decoded["uid"]
         except Exception:
             return jsonify({"error": "Token inválido o expirado"}), 401
+
+        # Crear documento del usuario en Firestore si no existe
+        user_ref = db.collection("users").document(request.uid)
+        if not user_ref.get().exists:
+            user_ref.set({
+                "email": decoded.get("email", ""),
+                "name": decoded.get("name", decoded.get("email", "").split("@")[0]),
+                "created_at": firestore.SERVER_TIMESTAMP,
+            })
 
         return f(*args, **kwargs)
 
