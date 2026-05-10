@@ -28,6 +28,7 @@ export const createDefaultProperty = () => ({
   bedrooms:             1,
   beds:                 1,
   number_of_reviews:    0,
+  review_scores_rating: 4.5,
   listing_price:        80,
   minimum_nights:       2,
   instant_bookable:     false,

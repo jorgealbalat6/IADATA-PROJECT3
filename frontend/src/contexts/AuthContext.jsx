@@ -26,11 +26,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('auth_token', token);
       return true;
     } catch {
-      // Fallback para demo sin backend
-      const u = { name: email.split('@')[0], email };
-      setUser(u);
-      localStorage.setItem('auth_user', JSON.stringify(u));
-      return true;
+      return false;
     }
   };
 
@@ -44,11 +40,7 @@ export const AuthProvider = ({ children }) => {
       if (!res.ok) return false;
       return await login(email, password);
     } catch {
-      // Fallback para demo sin backend
-      const u = { name, email };
-      setUser(u);
-      localStorage.setItem('auth_user', JSON.stringify(u));
-      return true;
+      return false;
     }
   };
 
