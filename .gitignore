@@ -29,3 +29,4 @@ dbt/venv/
 *.env.local
 frontend/dist/
 dbt/logs/
+ml/experimentos/yannis/notebooks/modelado_resultados/artefactos

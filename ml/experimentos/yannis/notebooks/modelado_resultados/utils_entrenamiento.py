@@ -165,19 +165,31 @@ def plot_roc_and_pr_curves(y_true: np.ndarray, y_prob: np.ndarray,
 
 
 def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray,
-                          title_suffix: str = ''):
-    """Grafica la matriz de confusión normalizada."""
+                          title_suffix: str = '', ax=None):
+    """
+    Grafica la matriz de confusión normalizada.
+    Si se pasa un eje 'ax', dibuja en él; si no, crea una figura nueva.
+    """
+    from sklearn.metrics import confusion_matrix
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
     cm = confusion_matrix(y_true, y_pred, normalize='true')
 
-    fig, ax = plt.subplots(figsize=(6, 5))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 5))
+
     sns.heatmap(cm, annot=True, fmt='.2%', cmap='Blues', ax=ax,
                 xticklabels=['Vacío (0)', 'Ocupado (1)'],
-                yticklabels=['Vacío (0)', 'Ocupado (1)'])
+                yticklabels=['Vacío (0)', 'Ocupado (1)'],
+                cbar=False)
     ax.set_xlabel('Predicción')
     ax.set_ylabel('Real')
-    ax.set_title(f'Matriz de Confusión (Normalizada) {title_suffix}')
-    plt.tight_layout()
-    plt.show()
+    ax.set_title(f'Matriz de Confusión {title_suffix}')
+    
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
 
 
 # =============================================================================
