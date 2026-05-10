@@ -218,34 +218,24 @@ def create_neighbourhood_features(df: pd.DataFrame,
 # 6. BINARIZACIÓN Y CASTEO FINAL
 # =============================================================================
 
-def binarize_and_cast_features(df: pd.DataFrame) -> pd.DataFrame:
+def binarize_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Binariza variables categóricas residuales (room_type, instant_bookable)
-    y fuerza el casteo de todas las variables numéricas a float64.
+    Binariza variables categóricas residuales (room_type, instant_bookable).
+    No realiza casteos de tipos (float/category), delegando esto a los 
+    pipelines específicos de cada modelo.
     """
     df_out = df.copy()
     
-    # 1 si es casa entera, 0 si es habitación
+    # 1. si es casa entera, 0 si es habitación
     if 'room_type' in df_out.columns:
-        df_out['is_entire_home'] = (df_out['room_type'] == 'Entire home/apt').astype('float64')
+        df_out['is_entire_home'] = (df_out['room_type'] == 'Entire home/apt').astype(int)
         df_out.drop(columns=['room_type'], inplace=True)
     
     # Booleano a 0/1
     if 'instant_bookable' in df_out.columns:
-        df_out['instant_bookable'] = df_out['instant_bookable'].astype('float64')
+        df_out['instant_bookable'] = df_out['instant_bookable'].astype(int)
         
-    # Casteo general a float64 (excepto IDs, fechas y target categórico principal)
-    exclude_cols = ['neighbourhood_cleansed', 'listing_id', 'date', 'is_occupied']
-    cols_to_float = [c for c in df_out.columns if c not in exclude_cols]
-    
-    for col in cols_to_float:
-        df_out[col] = df_out[col].astype('float64')
-        
-    # Asegurarnos de que el target es numérico
-    if 'is_occupied' in df_out.columns:
-        df_out['is_occupied'] = df_out['is_occupied'].astype('float64')
-        
-    print("[Casteo] Variables residuales binarizadas y features numéricas casteadas a float64.")
+    print("[Binarización] Variables residuales (room_type, instant_bookable) binarizadas.")
     return df_out
 
 
@@ -291,8 +281,8 @@ def run_global_pipeline(df: pd.DataFrame, max_lag: int = 14) -> pd.DataFrame:
     # Paso 5: Features de barrio
     df = create_neighbourhood_features(df)
 
-    # Paso 6: Binarización y casteo final
-    df = binarize_and_cast_features(df)
+    # Paso 6: Binarización
+    df = binarize_features(df)
 
     # Resumen
     n_new_cols = df.shape[1] - n_cols_initial

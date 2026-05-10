@@ -24,7 +24,8 @@ def select_lags_by_mi(X_train: pd.DataFrame, y_train: pd.Series,
                       lag_prefix: str = 'is_occupied_lag_',
                       sample_frac: float = 0.3,
                       top_k: int = 5,
-                      random_state: int = 42) -> list:
+                      random_state: int = 42,
+                      verbose: bool = True) -> list:
     """
     Selecciona los top_k lags más relevantes usando Mutual Information
     sobre una muestra representativa del set de Train.
@@ -34,7 +35,7 @@ def select_lags_by_mi(X_train: pd.DataFrame, y_train: pd.Series,
     lag_cols = [c for c in X_train.columns if c.startswith(lag_prefix)]
 
     if not lag_cols:
-        print("[MI Lags] No se encontraron columnas de lag. Saltando selección.")
+        if verbose: print("[MI Lags] No se encontraron columnas de lag. Saltando selección.")
         return []
 
     # Muestra representativa para ahorrar cómputo
@@ -50,15 +51,16 @@ def select_lags_by_mi(X_train: pd.DataFrame, y_train: pd.Series,
     y_clean = y_sample[mask]
 
     if len(X_clean) == 0:
-        print("[MI Lags] Muestra vacía tras eliminar nulos. Devolviendo todos los lags.")
+        if verbose: print("[MI Lags] Muestra vacía tras eliminar nulos. Devolviendo todos los lags.")
         return lag_cols
 
     mi_scores = mutual_info_classif(X_clean, y_clean, random_state=random_state)
     mi_series = pd.Series(mi_scores, index=lag_cols).sort_values(ascending=False)
 
     selected = mi_series.head(top_k).index.tolist()
-    print(f"[MI Lags] Top {top_k} lags seleccionados: {selected}")
-    print(f"          Scores: {mi_series.head(top_k).round(4).to_dict()}")
+    if verbose:
+        print(f"[MI Lags] Top {top_k} lags seleccionados: {selected}")
+        print(f"          Scores: {mi_series.head(top_k).round(4).to_dict()}")
 
     return selected
 
