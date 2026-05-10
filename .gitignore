@@ -24,3 +24,8 @@ node_modules/
 venv/
 ENV/
 dbt/venv/
+.env
+.env.*
+*.env.local
+frontend/dist/
+dbt/logs/

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Sidebar        from './components/Sidebar';
 import Topbar         from './components/Topbar';
+import ChatWidget     from './components/ChatWidget';
 import AppRouter, { PAGE_TITLES } from './router/AppRouter';
 import Login          from './pages/Login';
 import Register       from './pages/Register';
@@ -19,6 +20,7 @@ const AppLayout = () => {
           <AppRouter />
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 };
