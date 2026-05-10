@@ -469,8 +469,6 @@ module "api" {
   env_vars = {
     GCP_PROJECT        = var.project_id
     FIRESTORE_DATABASE = module.firestore.database_name
-    GCP_PROJECT        = var.project_id
-    FIRESTORE_DATABASE = module.firestore.database_name
     JWT_SECRET         = var.jwt_secret
 
   }
