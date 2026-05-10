@@ -34,12 +34,9 @@ models:
     # Config indicated by + and applies to all files under models/example/
     staging:
       +materialized: table
-    intermediate:
-      +materialized: view
     marts:
       +materialized: table
-      +partition_by:
-        field: date
-        data_type: date
-        granularity: day
-      +cluster_by: ["neighbourhood_cleansed", "room_type"]
+      # +partition_by:
+      #   field: date
+      #   data_type: date
+      #   granularity: day

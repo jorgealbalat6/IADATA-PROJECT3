@@ -441,3 +441,113 @@ resource "google_project_iam_member" "dbt_bq_job" {
   role    = "roles/bigquery.jobUser"
   member  = "serviceAccount:${google_service_account.dbt_transform.email}"
 }
+
+# --- Service Account: API ---
+resource "google_service_account" "api" {
+  project      = var.project_id
+  account_id   = "sa-api"
+  display_name = "API Cloud Run"
+  description  = "Service account para la API REST"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+# --- Cloud Run: API ---
+module "api" {
+  source = "./modules/cloud-run"
+
+  service_name          = "api"
+  region                = var.region
+  project_id            = var.project_id
+  service_account_email = google_service_account.api.email
+
+  image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.repository_name}/api:latest"
+
+  container_port = 8080
+  memory         = "1Gi"
+
+  env_vars = {
+    GCP_PROJECT        = var.project_id
+    FIRESTORE_DATABASE = module.firestore.database_name
+    JWT_SECRET         = var.jwt_secret
+
+  }
+
+  invokers = ["allUsers"] #lo cambiare cuando meta firebase
+
+  extra_roles = [
+    "roles/datastore.user",
+    "roles/bigquery.jobUser",
+    "roles/bigquery.dataViewer",
+    "roles/aiplatform.user"
+  ]
+
+  api_services_dependency = module.api_services.enabled_apis
+}
+
+resource "google_storage_bucket" "vertex_ai" {
+  name          = "${var.project_id}-ml-models"
+  location      = var.region
+  project       = var.project_id
+  force_destroy = true
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+module "frontend" {
+  source              = "./modules/cloud-run"
+  project_id          = var.project_id
+  region              = var.region
+  service_name        = "frontend"
+  image               = "europe-west1-docker.pkg.dev/${var.project_id}/app-repo/frontend:latest"
+  memory              = "2Gi"
+  service_account_email = google_service_account.sa_frontend.email
+  invokers            = ["allUsers"]
+  env_vars            = {}
+}
+
+resource "google_service_account" "sa_frontend" {
+  account_id   = "sa-frontend"
+  display_name = "Frontend Cloud Run"
+  project      = var.project_id
+}
+
+# --- Service Account para Cloud Scheduler ---
+resource "google_service_account" "sa_scheduler" {
+  project      = var.project_id
+  account_id   = "sa-scheduler"
+  display_name = "Cloud Scheduler Batch Predict"
+
+  depends_on = [module.api_services.enabled_apis]
+}
+
+# Permitir al scheduler invocar la API en Cloud Run
+resource "google_cloud_run_service_iam_member" "scheduler_invoker" {
+  project  = var.project_id
+  location = var.region
+  service  = module.api.service_name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.sa_scheduler.email}"
+}
+
+# --- Cloud Scheduler: Batch Predict a las 6 AM ---
+resource "google_cloud_scheduler_job" "batch_predict" {
+  project     = var.project_id
+  region      = var.region
+  name        = "batch-predict-daily"
+  description = "Prediccion automatica diaria de ocupacion para todos los apartamentos"
+  schedule    = "0 6 * * *"
+  time_zone   = "Europe/Madrid"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${module.api.service_url}/batch-predict"
+
+    oidc_token {
+      service_account_email = google_service_account.sa_scheduler.email
+      audience              = module.api.service_url
+    }
+  }
+
+  depends_on = [module.api_services.enabled_apis]
+}
